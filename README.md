@@ -1,3 +1,3 @@
-# tgf-gc8
+# Replenishment Outcome
 
-*Test
+The goal of this data analysis is to understand the key factors driving the Replenishment outcomes of TGF. 
