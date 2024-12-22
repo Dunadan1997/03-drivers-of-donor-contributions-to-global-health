@@ -149,6 +149,43 @@ list_data$data[[3]] <-
     )
 
 
+# Load IMF data
+IMF_data <- 
+  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/IMF/dataset_2024-12-22T16_56_47.354302444Z_DEFAULT_INTEGRATION_IMF.FAD_FM_2.0.0.csv")
+
+# Organize IMF data into appropriate format
+IMF_test<-
+  IMF_data %>% 
+  select(
+    donor_name = COUNTRY.Name, 
+    fiscal_indicator = INDICATOR.Name, 
+    starts_with("19"), 
+    starts_with("20")) %>% 
+  pivot_longer(
+    cols = na.omit(str_extract(colnames(IMF), "\\d+")), 
+    names_to = "year", values_to = "obs_value") %>% 
+  mutate(
+    donor_name = str_extract(donor_name, "^[^,]+")
+  ) %>% 
+  filter(donor_name != "Congo") %>% 
+  pivot_wider(names_from = fiscal_indicator, values_from = obs_value)
+
+IMF_test <- IMF_test %>% group_by(donor_name)
+
+for (i in seq_along(IMF_test[1:8])+2) {
+  
+  IMF_test %>% 
+    mutate(
+      rolling_mean = slide_mean(
+        `Revenue, General government, Percent of GDP`, before = 2, na_rm = T
+      )
+    )
+  
+}
+
+
+IMF_test <- IMF_test %>% ungroup()
+
 ## to-do: link each year to a Grant Cycle; look for pledge realization by year
 
 
