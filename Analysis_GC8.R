@@ -8,6 +8,7 @@
 # Load packages
 library(tidyverse)
 library(googlesheets4)
+library(slider)
 
 # Link to Google Sheets
 sheet_url <- 
@@ -16,8 +17,8 @@ sheet_url <-
 # Create function to load data
 my_sheet_names <- 
   c(
-    "OECD" = "ODA Disbursements 2001-2023", 
-    "DGD" ="Other Replenishments", 
+    "OECD" = "ODA Disbursements 1997-2023", 
+    "CGD" ="Other Replenishments", 
     "TGF" = "0-7 Replenishments", 
     "IMF" = "Macroeconomics 2000-2024"
     )
@@ -39,6 +40,9 @@ for (i in seq_along(my_sheet_names)) {
   list_data$data[[i]] <- load_data(i) 
 }
 
+# create a copy of the loaded data
+copy_list_data <- list_data
+
 # Select and rename columns from OECD data
 list_data$data[[1]] <- 
   list_data %>% 
@@ -52,9 +56,17 @@ list_data$data[[1]] <-
     "donor_name" = "Donor", 
     "year" = "TIME_PERIOD", 
     "oda_spent" = "OBS_VALUE"
+    ) %>% 
+# Create 3 year running average of ODA disbursements (1yr before, 1yr after)
+  arrange(donor_name, year) %>% 
+  group_by(donor_name) %>% 
+  mutate(
+    oda_running_avg = slide_mean(
+      oda_spent, before = 1, after = 1, complete = FALSE, na_rm = TRUE
+      )
     )
 
-# Gather CGD data into a long format
+# Gather CGD data by name of organization and replenishment year
 list_data$data[[2]] <-
   list_data$data[[2]] %>% 
   pivot_longer(
@@ -62,6 +74,7 @@ list_data$data[[2]] <-
     names_to = "org_year", 
     values_to = "money") %>% 
   separate(org_year, into = c("org", "year"), sep = "_") %>% 
+# Create a variable indicating under which TGF grant cycle the pledge was made
   mutate(
     year = as.numeric(year), 
     "grant_cycle" = 
@@ -81,7 +94,20 @@ list_data$data[[2]] <-
                     )
              )
       )
-  ) %>% 
+  )
+
+# Create table summarizing the number of replenishments per Grant Cycle
+tab_n_rplnshmnt <-
+  list_data$data[[2]] %>%
+  select(-donor_name) %>% 
+  group_by(org, year, grant_cycle) %>% 
+  summarise(sum = sum(money, na.rm = T)) %>% 
+  group_by(grant_cycle) %>% 
+  summarise(n_rplnshmnt = n())
+
+# Spread CDG data by MDB and Health Fun
+list_data$data[[2]] <-
+  list_data$data[[2]] %>%
   pivot_wider(names_from = org, values_from = money) %>% 
   group_by(donor_name, grant_cycle) %>% 
   summarise(
@@ -96,9 +122,11 @@ list_data$data[[2]] <-
     GPE = sum(GPE, na.rm = T), 
     AfDf = sum(AfDf, na.rm = T), 
     CEPI = sum(CEPI, na.rm = T)
-  )
+  ) %>% 
+# Join the variable n_rplnshmnt into the CGD data
+  left_join(tab_n_rplnshmnt, by = "grant_cycle")
 
-# Create Grant Cycle column
+# Create a Grant Cycle variable in the TGF data
 list_data$data[[3]] <- 
   list_data %>% 
   pluck(2,3) %>% 
