@@ -19,8 +19,7 @@ my_sheet_names <-
   c(
     "OECD" = "ODA Disbursements 1997-2023", 
     "CGD" ="Other Replenishments", 
-    "TGF" = "0-7 Replenishments", 
-    "IMF" = "Macroeconomics 2000-2024"
+    "TGF" = "0-7 Replenishments" 
     )
 
 load_data <- 
@@ -30,7 +29,7 @@ load_data <-
     )
   }
 
-# Load data
+# Load OEDC, CGD, and TGF data
 list_data <- tibble(
   source = names(my_sheet_names),
   data = vector("list", length(my_sheet_names))
@@ -162,29 +161,38 @@ IMF_test<-
     starts_with("19"), 
     starts_with("20")) %>% 
   pivot_longer(
-    cols = na.omit(str_extract(colnames(IMF), "\\d+")), 
+    cols = na.omit(str_extract(colnames(IMF_data), "\\d+")), 
     names_to = "year", values_to = "obs_value") %>% 
   mutate(
     donor_name = str_extract(donor_name, "^[^,]+")
   ) %>% 
   filter(donor_name != "Congo") %>% 
-  pivot_wider(names_from = fiscal_indicator, values_from = obs_value)
-
-IMF_test <- IMF_test %>% group_by(donor_name)
-
-for (i in seq_along(IMF_test[1:8])+2) {
-  
-  IMF_test %>% 
-    mutate(
-      rolling_mean = slide_mean(
-        `Revenue, General government, Percent of GDP`, before = 2, na_rm = T
-      )
+  pivot_wider(names_from = fiscal_indicator, values_from = obs_value) %>% 
+  rename(
+    expdtr_prctgdp = `Expenditure, Percent of GDP`, 
+    revn_prctgdp = `Revenue, General government, Percent of GDP`, 
+    prmryfsclblc_prctgdp = `Primary net lending (+) / net borrowing (-), Percent of GDP`,
+    fsclblc_prctgdp = `Net lending (+) / net borrowing (-), Percent of GDP`, 
+    adjfsclblc_prctgdp = `Cyclically adjusted balance, Percent of potential GDP`, 
+    grsdbt_prctgdp = `Gross debt, Percent of GDP`, 
+    ntdbt_prctgdp = `Net debt, Percent of GDP`, 
+    prmryadjfsclblc_prctgdp = `Cyclically adjusted primary balance, Percent of potential GDP`
     )
-  
-}
 
-
-IMF_test <- IMF_test %>% ungroup()
+# Create rolling average of fiscal indicators
+IMF_test <- 
+  IMF_test %>%
+  group_by(donor_name) %>% 
+  mutate(
+    across(
+      expdtr_prctgdp:prmryadjfsclblc_prctgdp, 
+      ~ slide_mean(.x, before = 2, na_rm = TRUE),
+      .names = "{.col}_rllavg" 
+      )
+    ) %>% 
+# renaming rolling average columns
+  rename_with(~ str_replace_all(.x, "_prctgdp_", "_")) %>% 
+  ungroup()
 
 ## to-do: link each year to a Grant Cycle; look for pledge realization by year
 
