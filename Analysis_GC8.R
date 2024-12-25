@@ -9,6 +9,7 @@
 library(tidyverse)
 library(googlesheets4)
 library(slider)
+library(stringi)
 
 # Link to Google Sheets
 sheet_url <- 
@@ -194,6 +195,80 @@ IMF_test <-
   rename_with(~ str_replace_all(.x, "_prctgdp_", "_")) %>% 
   ungroup()
 
-## to-do: link each year to a Grant Cycle; look for pledge realization by year
+# Load PAGED data
+paged_data <- 
+  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/PAGED-WECEE.csv")
+paged_data_test <- 
+  paged_data %>% 
+  select(country_name, year_in, year_out, cab_composition1) %>% 
+  separate_wider_delim(cab_composition1, delim = ",", names = "party_name_short", too_many = "drop") %>% 
+  mutate(
+    party_name_short = stri_trans_general(party_name_short, "latin-ascii"),
+    country_name = ifelse(country_name == "Czechia", "Czech Republic", country_name)
+    )
+
+# Load Chess data
+chess_data <- 
+  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/1999-2019_CHES_dataset_means(v3).csv")
+
+chess_data_02 <- 
+  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/CHES_Ukraine_March_2024.csv") %>% 
+  select(country_name = country, party_name_short = party, lrecon) %>%
+  mutate(year = 2024)
+
+chess_country_data <- 
+  tibble(
+    country_id = c(1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 16, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 37, 38, 40),
+    country_name = c("Belgium", "Denmark", "Germany", "Greece", "Spain", "France", "Ireland", "Italy", "Netherlands", "United Kingdom",
+              "Portugal", "Austria", "Finland", "Sweden", "Bulgaria", "Czech Republic", "Estonia", "Hungary", "Latvia",
+              "Lithuania", "Poland", "Romania", "Slovakia", "Slovenia", "Croatia", "Malta", "Luxembourg", "Cyprus")
+    )
+
+chess_data_test <- 
+  chess_data %>% 
+  select(country_id = country, year, party_name_short = party, lrgen, lrecon) %>% 
+  left_join(chess_country_data, by = "country_id") %>% 
+  bind_rows(chess_data_02) %>% 
+  select(country_name, everything(), -country_id)
+
+parties_list <- paged_data_test %>% filter(year_in > 1998 & !is.na(party_name_short)) %>% group_by(country_name, party_name_short) %>% summarise(n = n())
+parties_ratings <- chess_data_test %>% filter(!is.na(party_name_short)) %>% group_by(country_name, party_name_short) %>% summarise(n = n())
+
+countries_to_check <- parties_list %>% group_by(country_name) %>% summarise(n = n()) %>% pull(country_name)  # Add your list of countries here
+
+# Iterate through each country and store results in a tibble
+results_tibble <- map_dfr(countries_to_check, function(country) {
+  # Filter parties_list and parties_ratings for the current country
+  filtered_parties_list <- parties_list %>% filter(country_name == country)
+  filtered_parties_ratings <- parties_ratings %>%
+    filter(country_name == country) %>%
+    pull(party_name_short)
+  
+  # Add the check for `in_parties_ratings` to the current filtered list
+  filtered_parties_list %>%
+    mutate(
+      in_parties_ratings = party_name_short %in% filtered_parties_ratings
+    )
+})
+
+## to-do: check naming of political parties, see if identical between datasets, consolidate if necessary / worth it
+
+# research longitudinal data on ideological placement for other regions (non-EU)
+# reconcile party names (using english version) and year (using year_in)
+
+adjusted_party_names <- 
+  tibble(
+    new_names = 
+      c(
+        "SDSS",
+        "ANO2011",
+        "SD",
+        "IL", # no change
+        "ResP", # no change
+        "UMP", # could also be LR
+        "PS"
+        
+      )
+    )
 
 
