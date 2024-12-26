@@ -41,7 +41,8 @@ for (i in seq_along(my_sheet_names)) {
 }
 
 # create a copy of the loaded data
-copy_list_data <- list_data
+copy_list_data <- 
+  list_data
 
 # Select and rename columns from OECD data
 list_data$data[[1]] <- 
@@ -198,6 +199,8 @@ IMF_test <-
 # Load PAGED data
 paged_data <- 
   read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/PAGED-WECEE.csv")
+
+# Select relevant variables from PAGED data
 paged_data_test <- 
   paged_data %>% 
   select(country_name, year_in, year_out, cab_composition1) %>% 
@@ -207,11 +210,12 @@ paged_data_test <-
     country_name = ifelse(country_name == "Czechia", "Czech Republic", country_name)
     )
 
-# Load Chess data
+# Load CHESS data from 1999 to 2019
 chess_data <- 
   read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/1999-2019_CHES_dataset_means(v3).csv")
 
-chess_data_02 <- 
+# Load CHESS data from 2024
+chess_data_2024 <- 
   read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/CHES_Ukraine_March_2024.csv") %>% 
   select(country_name = country, party_name_short = party, lrecon) %>%
   mutate(year = 2024)
@@ -224,51 +228,150 @@ chess_country_data <-
               "Lithuania", "Poland", "Romania", "Slovakia", "Slovenia", "Croatia", "Malta", "Luxembourg", "Cyprus")
     )
 
+# Select relevant variables from CHESS data
 chess_data_test <- 
   chess_data %>% 
   select(country_id = country, year, party_name_short = party, lrgen, lrecon) %>% 
   left_join(chess_country_data, by = "country_id") %>% 
-  bind_rows(chess_data_02) %>% 
+# Add country names
+  bind_rows(chess_data_2024) %>% 
   select(country_name, everything(), -country_id)
 
-parties_list <- paged_data_test %>% filter(year_in > 1998 & !is.na(party_name_short)) %>% group_by(country_name, party_name_short) %>% summarise(n = n())
-parties_ratings <- chess_data_test %>% filter(!is.na(party_name_short)) %>% group_by(country_name, party_name_short) %>% summarise(n = n())
+# Create a table of all political parties in PAGED
+parties_list <- 
+  paged_data_test %>% 
+  filter(year_in > 1998 & !is.na(party_name_short)) %>% 
+  group_by(country_name, party_name_short) %>% 
+  summarise(n = n())
+# Create a table of all countries in PAGED
+countries_to_check <- 
+  parties_list %>% 
+  group_by(country_name) %>% 
+  summarise(n = n()) %>% 
+  pull(country_name)
+# Create a table of all ideological ratings in CHESS
+parties_ratings <- 
+  chess_data_test %>% 
+  filter(!is.na(party_name_short)) %>% 
+  group_by(country_name, party_name_short) %>% 
+  summarise(n = n())
 
-countries_to_check <- parties_list %>% group_by(country_name) %>% summarise(n = n()) %>% pull(country_name)  # Add your list of countries here
-
-# Iterate through each country and store results in a tibble
-results_tibble <- map_dfr(countries_to_check, function(country) {
-  # Filter parties_list and parties_ratings for the current country
-  filtered_parties_list <- parties_list %>% filter(country_name == country)
-  filtered_parties_ratings <- parties_ratings %>%
-    filter(country_name == country) %>%
-    pull(party_name_short)
-  
-  # Add the check for `in_parties_ratings` to the current filtered list
-  filtered_parties_list %>%
-    mutate(
-      in_parties_ratings = party_name_short %in% filtered_parties_ratings
+# Identify party names that are not aligned between the PAGED and CHESS dataset
+results_tibble <- 
+  map_dfr(
+    countries_to_check, 
+    function(country) {
+# Filter parties_list and parties_ratings for the current country
+      filtered_parties_list <- 
+        parties_list %>% 
+        filter(country_name == country)
+      filtered_parties_ratings <- 
+        parties_ratings %>%
+        filter(country_name == country) %>%
+        pull(party_name_short)
+      
+# Identify party names in the current country that are not the same between the PAGED and CHESS dataset
+      filtered_parties_list %>%
+        mutate(
+          in_parties_ratings = 
+            party_name_short %in% filtered_parties_ratings
+        )
+      }
     )
-})
+
+# Create a table of all party name corrections to align the data in PAGED and CHESS
+list_new_party_names <- 
+  results_tibble %>% 
+  ungroup() %>% 
+  filter(in_parties_ratings == "FALSE") %>% 
+  bind_cols(
+    tibble(
+      new_names = 
+        c(
+          "SDSS", "ANO2011", "SD",
+          "IL", # no change
+          "ResP", # no change
+          "UMP", "PS", "CDU", "ANEL",
+          "IP", # Sj
+          "LG", # Graen
+          "PP", # F
+          "SDA", # Sam
+          "Independent", # no change
+          "PDS",
+          "JV", # V
+          "LC",
+          "A", # Ap
+          "KRF", # KrF
+          "AWS", # AWSP
+          "PNTCD", # CDR 2000
+          "S", # SAP
+          "Con" # Cons
+          )
+      )
+    ) %>% 
+  mutate(
+    adjust_dataset = ifelse(
+      party_name_short == new_names, 
+      "CHESS", "PAGED"
+      )
+    )
+
+# Create a table of the party names to change in the PAGED data
+list_new_party_names_PAGED <-
+  list_new_party_names %>% 
+  filter(adjust_dataset == "PAGED")
+
+# Correct party names in the PAGED data
+paged_data_test <- reduce(
+  seq_len(nrow(list_new_party_names_PAGED)),
+  .init = paged_data_test,
+  .f = function(data, i) {
+    data %>% 
+      mutate(
+        party_name_short = ifelse(
+          country_name == list_new_party_names_PAGED[[i, 1]] & 
+            party_name_short == list_new_party_names_PAGED[[i, 2]],
+          list_new_party_names_PAGED[[i, 5]],
+          party_name_short
+        )
+      )
+  }
+)
+
+# Create a table of the party names to change in the CHESS data
+list_new_party_names_CHESS <-
+  list_new_party_names %>% 
+  filter(adjust_dataset == "CHESS") %>% 
+  filter(!party_name_short %in% c("IL", "ResP", "Independent")) %>% 
+  mutate(
+    party_name_short = c(
+      "Sj", "Graen", "F", "Sam", "V", 
+      "Ap", "KrF", "AWSP", "CDR 2000", 
+      "SAP", "Cons"
+      )
+    )
+
+# Correct party names in the CHESS data
+chess_data_test <- reduce(
+  seq_len(nrow(list_new_party_names_CHESS)),
+  .init = chess_data_test,
+  .f = function(data, i) {
+    data %>% 
+      mutate(
+        party_name_short = ifelse(
+          country_name == list_new_party_names_CHESS[[i, 1]] & 
+            party_name_short == list_new_party_names_CHESS[[i, 2]],
+          list_new_party_names_CHESS[[i, 5]],
+          party_name_short
+        )
+      )
+  }
+)
 
 ## to-do: check naming of political parties, see if identical between datasets, consolidate if necessary / worth it
 
 # research longitudinal data on ideological placement for other regions (non-EU)
-# reconcile party names (using english version) and year (using year_in)
 
-adjusted_party_names <- 
-  tibble(
-    new_names = 
-      c(
-        "SDSS",
-        "ANO2011",
-        "SD",
-        "IL", # no change
-        "ResP", # no change
-        "UMP", # could also be LR
-        "PS"
-        
-      )
-    )
+# need to find the left-right info for Iceland: until 2024 = LG, after 2024 = Sam (or SDA)
 
 
