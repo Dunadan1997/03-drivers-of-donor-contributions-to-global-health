@@ -203,12 +203,54 @@ paged_data <-
 # Select relevant variables from PAGED data
 paged_data_test <- 
   paged_data %>% 
-  select(country_name, year_in, year_out, cab_composition1) %>% 
+  select(
+    country_name, 
+    year = year_in, 
+    year_out, 
+    cab_composition1,
+    elecdate
+    ) %>% 
   separate_wider_delim(cab_composition1, delim = ",", names = "party_name_short", too_many = "drop") %>% 
   mutate(
     party_name_short = stri_trans_general(party_name_short, "latin-ascii"),
-    country_name = ifelse(country_name == "Czechia", "Czech Republic", country_name)
-    )
+    country_name = ifelse(country_name == "Czechia", "Czech Republic", country_name),
+    elecdate = year(dmy(elecdate)),
+# Create variable recording the year the left-right placement was made to link data in PAGED and CHESS
+    yr_rating_reported = 
+      ifelse(year_out < 2000, 1999, 
+             ifelse(year < 2005, 2002, 
+                    ifelse(year < 2009, 2006, 
+                           ifelse(year < 2013, 2010, 
+                                  ifelse(year < 2017, 2014, 
+                                         ifelse(year <= 2021, 2019, 
+                                                2024
+                                                )
+                                         )
+                                  )
+                           )
+                    )
+             )
+    ) %>% 
+  bind_rows( # next up Norway
+    tibble(
+      country_name = countries_to_check, # remove Czech Republic, Add 1 more for Denmark / Iceland / Ireland / Netherlands
+      year = c(2024, 2024, 2024, 2024, 2019, 2022, 2023, 2023, 2024, 2021, 2023, 2022, 2021, 2024, 2020, 2024, 2022, 2022,
+               2024, 2021, 2024, ),
+      year_out = ,
+      party_name_short = c("FPO", "VLD", "GERB", "HDZ", "S", "S", "ER", "KOK", "LREM", "SPD", "ND", "Fidesz", "LG", "SDA", "FF", "FF", "FdI", "JV",
+                           "LSDP", "VVD", "PVV", ),
+      party_id = c(1303, 107, 2010, 3101, 201, 201, 2203, 1402, 626, 302, 402, 2302, 4502, 4505, 701, 701, 844, 2412,
+                   2501, 1003, 1017, ),
+      elecdate = c(2024, 2024, 2024, 2024, 2019, 2022, 2023, 2023, 2024, 2021, 2023, 2022, 2021, 2024, 2020, 2024, 2022, 2022,
+                   2024, 2021, 2023, ),
+      yr_rating_reported = c(2024, 2024, 2024, 2024, 2019, 2024, 2024, 2024, 2024, 2019, 2024, 2024, 2019, 2024, 2019, 2024, 2024, 2024,
+                             2024, 2019, 2024, )
+      )
+    ) %>% 
+  mutate(
+    yr_rating_reported = 
+      ifelse(country_name == "Czech Republic" & year == 2021, 2024, 
+             ifelse(country_name == "Italy" & year == 2018, 2022, yr_rating_reported)))
 
 # Load CHESS data from 1999 to 2019
 chess_data <- 
@@ -217,8 +259,12 @@ chess_data <-
 # Load CHESS data from 2024
 chess_data_2024 <- 
   read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/CHES_Ukraine_March_2024.csv") %>% 
-  select(country_name = country, party_name_short = party, lrecon) %>%
-  mutate(year = 2024)
+  select(country_name = country, party_name_short = party, lrecon, party_id) %>%
+  mutate(yr_rating_reported = 2024,
+         party_name_short = stri_trans_general(party_name_short, "latin-ascii"),
+# Correct party abbreviation
+         party_name_short = ifelse(party_id == 2412, "JV", party_name_short)
+         ) 
 
 chess_country_data <- 
   tibble(
@@ -231,7 +277,7 @@ chess_country_data <-
 # Select relevant variables from CHESS data
 chess_data_test <- 
   chess_data %>% 
-  select(country_id = country, year, party_name_short = party, lrgen, lrecon) %>% 
+  select(country_id = country, yr_rating_reported = year, party_name_short = party, lrgen, lrecon, party_id) %>% 
   left_join(chess_country_data, by = "country_id") %>% 
 # Add country names
   bind_rows(chess_data_2024) %>% 
@@ -240,7 +286,7 @@ chess_data_test <-
 # Create a table of all political parties in PAGED
 parties_list <- 
   paged_data_test %>% 
-  filter(year_in > 1998 & !is.na(party_name_short)) %>% 
+  filter(year > 1998 & !is.na(party_name_short)) %>% 
   group_by(country_name, party_name_short) %>% 
   summarise(n = n())
 # Create a table of all countries in PAGED
@@ -261,7 +307,7 @@ results_tibble <-
   map_dfr(
     countries_to_check, 
     function(country) {
-# Filter parties_list and parties_ratings for the current country
+      # Filter parties_list and parties_ratings for the current country
       filtered_parties_list <- 
         parties_list %>% 
         filter(country_name == country)
@@ -270,14 +316,14 @@ results_tibble <-
         filter(country_name == country) %>%
         pull(party_name_short)
       
-# Identify party names in the current country that are not the same between the PAGED and CHESS dataset
+      # Identify party names in the current country that are not the same between the PAGED and CHESS dataset
       filtered_parties_list %>%
         mutate(
           in_parties_ratings = 
             party_name_short %in% filtered_parties_ratings
         )
-      }
-    )
+    }
+  )
 
 # Create a table of all party name corrections to align the data in PAGED and CHESS
 list_new_party_names <- 
@@ -306,20 +352,27 @@ list_new_party_names <-
           "PNTCD", # CDR 2000
           "S", # SAP
           "Con" # Cons
-          )
-      )
-    ) %>% 
+        )
+    )
+  ) %>% 
   mutate(
     adjust_dataset = ifelse(
       party_name_short == new_names, 
       "CHESS", "PAGED"
-      )
     )
+  )
 
 # Create a table of the party names to change in the PAGED data
 list_new_party_names_PAGED <-
   list_new_party_names %>% 
-  filter(adjust_dataset == "PAGED")
+  filter(adjust_dataset == "PAGED") %>% 
+  bind_rows(
+    tibble(
+      country_name = "Italy",
+      party_name_short = "FI-PdL",
+      new_names = "FI"
+    )
+  )
 
 # Correct party names in the PAGED data
 paged_data_test <- reduce(
@@ -342,14 +395,25 @@ paged_data_test <- reduce(
 list_new_party_names_CHESS <-
   list_new_party_names %>% 
   filter(adjust_dataset == "CHESS") %>% 
-  filter(!party_name_short %in% c("IL", "ResP", "Independent")) %>% 
+  filter(!party_name_short %in% c("IL", "ResP", "Independent"))
+
+list_new_party_names_CHESS <-
+  list_new_party_names_CHESS %>% 
+  bind_rows(list_new_party_names_CHESS %>% slice(11)) %>% 
   mutate(
     party_name_short = c(
       "Sj", "Graen", "F", "Sam", "V", 
       "Ap", "KrF", "AWSP", "CDR 2000", 
-      "SAP", "Cons"
-      )
+      "SAP", "Cons", "CONS"
     )
+  ) %>% 
+  bind_rows(
+    tibble(
+      country_name = "Italy",
+      party_name_short ="PDL",
+      new_names = "FI"
+    )
+  )
 
 # Correct party names in the CHESS data
 chess_data_test <- reduce(
@@ -368,10 +432,53 @@ chess_data_test <- reduce(
   }
 )
 
-## to-do: check naming of political parties, see if identical between datasets, consolidate if necessary / worth it
+paged_data_test2 <-
+  paged_data_test %>% 
+  filter(
+    !is.na(party_name_short)
+  ) %>% 
+  left_join(
+    chess_data_test %>% 
+      group_by(country_name, party_name_short, party_id) %>%
+      summarise(n = n()) %>% 
+      select(-n) %>% 
+      ungroup(), 
+    by = c("country_name", "party_name_short")) %>% 
+  left_join(
+    chess_data_test %>% 
+      select(-country_name, -party_name_short), 
+    by = c("yr_rating_reported", "party_id")) %>% 
+  mutate(
+    lrgen = ifelse(
+      is.na(lrgen),
+      chess_data_test %>%
+        select(party_id, year = yr_rating_reported, lrgen) %>%
+        filter(party_id == party_id, year == year) %>%
+        pull(lrgen),
+      lrgen
+      ),
+      lrecon = ifelse(
+        is.na(lrecon),
+        chess_data_test %>%
+          select(party_id, year = yr_rating_reported, lrecon) %>%
+          filter(party_id == party_id, year == year) %>%
+          pull(lrecon),
+        lrecon
+      )
+    ) %>% 
+  left_join(
+    paged_data_test %>% 
+      group_by(elecdate) %>% 
+      summarise(n_elections = n()), 
+    by = "elecdate")
+
+
+# to-do: assign ratings to grant cycles based on proximity
 
 # research longitudinal data on ideological placement for other regions (non-EU)
 
 # need to find the left-right info for Iceland: until 2024 = LG, after 2024 = Sam (or SDA)
+
+# Assumptions: 3yr running average, 1 left-right ratings for every 4 years from 2000 (grouping)
 
 
