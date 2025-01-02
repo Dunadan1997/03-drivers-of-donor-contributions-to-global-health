@@ -468,15 +468,7 @@ paged_data_test2 <-
   fill(lrecon, .direction = "downup") %>% 
   ungroup()
 
-
-# to-do: assign ratings to grant cycles based on proximity
-
-# research longitudinal data on ideological placement for other regions (non-EU)
-
-# need to find the left-right info for Iceland: until 2024 = LG, after 2024 = Sam (or SDA)
-
-# Assumptions: 3yr running average, 1 left-right ratings for every 4 years from 2000 (grouping)
-
+# Bring last observation backward if value is missing
 chess_ice_nor_2024 <- 
   chess_data_test %>% 
   filter(country_name %in% c("Iceland", "Norway"))
@@ -492,4 +484,15 @@ paged_data_test2 <-
 
 # ratings we still need to fix
 paged_data_test2 %>% filter(year > 1999 & is.na(lrecon))
+
+
+# to-do: assign ratings to grant cycles based on proximity
+
+# research longitudinal data on ideological placement for other regions (non-EU)
+
+# need to find the left-right info for Iceland: until 2024 = LG, after 2024 = Sam (or SDA)
+
+# Assumptions: 3yr running average, 1 left-right ratings for every 4 years from 2000 (grouping)
+
+
 
