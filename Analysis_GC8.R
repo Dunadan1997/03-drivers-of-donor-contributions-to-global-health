@@ -230,27 +230,37 @@ paged_data_test <-
                            )
                     )
              )
-    ) %>% 
-  bind_rows( # next up Norway
-    tibble(
-      country_name = countries_to_check, # remove Czech Republic, Add 1 more for Denmark / Iceland / Ireland / Netherlands
-      year = c(2024, 2024, 2024, 2024, 2019, 2022, 2023, 2023, 2024, 2021, 2023, 2022, 2021, 2024, 2020, 2024, 2022, 2022,
-               2024, 2021, 2024, ),
-      year_out = ,
-      party_name_short = c("FPO", "VLD", "GERB", "HDZ", "S", "S", "ER", "KOK", "LREM", "SPD", "ND", "Fidesz", "LG", "SDA", "FF", "FF", "FdI", "JV",
-                           "LSDP", "VVD", "PVV", ),
-      party_id = c(1303, 107, 2010, 3101, 201, 201, 2203, 1402, 626, 302, 402, 2302, 4502, 4505, 701, 701, 844, 2412,
-                   2501, 1003, 1017, ),
-      elecdate = c(2024, 2024, 2024, 2024, 2019, 2022, 2023, 2023, 2024, 2021, 2023, 2022, 2021, 2024, 2020, 2024, 2022, 2022,
-                   2024, 2021, 2023, ),
-      yr_rating_reported = c(2024, 2024, 2024, 2024, 2019, 2024, 2024, 2024, 2024, 2019, 2024, 2024, 2019, 2024, 2019, 2024, 2024, 2024,
-                             2024, 2019, 2024, )
-      )
-    ) %>% 
+    )
+
+# Complete PAGED data with country governments in 2024
+paged_data_2024 <-
+  tibble(
+    country_name = c("Austria", "Belgium", "Bulgaria", "Croatia", "Denmark", "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", 
+                     "Hungary", "Iceland", "Iceland", "Ireland", "Ireland", "Italy", "Latvia", "Lithuania", "Netherlands", "Netherlands", 
+                     "Norway", "Poland", "Portugal", "Portugal", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Spain", "Sweden", "United Kingdom", 
+                     "United Kingdom"), # remove Czech Republic, Add 1 more for Denmark / Iceland / Ireland / Netherlands / Spain / United Kingdom, Add 2 for Portugal
+    year = c(2024, 2024, 2024, 2024, 2019, 2022, 2023, 2023, 2024, 2021, 2023, 2022, 2021, 2024, 2020, 2024, 2022, 2022,
+             2024, 2021, 2024, 2021, 2023, 2019, 2022, 2024, 2024, 2023, 2022, 2020, 2023, 2022, 2019, 2024),
+    year_out = NA,
+    party_name_short = c("FPO", "VLD", "GERB", "HDZ", "S", "S", "ER", "KOK", "LREM", "SPD", "ND", "Fidesz", "LG", "SDA", "FF", "FF", "FdI", "JV",
+                         "LSDP", "VVD", "PVV", "A", "PO", "PS", "PS", "PSD", "PSD", "Smer-SD", "GS", "PSOE", "PSOE", "M", "Con", "Lab"),
+    party_id_2 = c(1303, 107, 2010, 3101, 201, 201, 2203, 1402, 626, 302, 402, 2302, 4502, 4505, 701, 701, 844, 2412,
+                 2501, 1003, 1017, 3501, 2603, 1205, 1205, 1206, 2701, 2803, 2916, 501, 501, 1605, 1101, 1102),
+    elecdate = c(2024, 2024, 2024, 2024, 2019, 2022, 2023, 2023, 2024, 2021, 2023, 2022, 2021, 2024, 2020, 2024, 2022, 2022,
+                 2024, 2021, 2023, 2021, 2023, 2019, 2022, 2024, 2024, 2023, 2022, 2019, 2023, 2022, 2019, 2024),
+    yr_rating_reported = c(2024, 2024, 2024, 2024, 2019, 2024, 2024, 2024, 2024, 2019, 2024, 2024, 2019, 2024, 2019, 2024, 2024, 2024,
+                           2024, 2019, 2024, 2019, 2024, 2019, 2024, 2024, 2024, 2024, 2024, 2019, 2024, 2024, 2019, 2024)
+    )
+
+# Add 2024 governments to PAGED dataset
+paged_data_test <-
+  paged_data_test %>% 
+  bind_rows(paged_data_2024) %>% 
+# Correct minor issues with cabinet periods
   mutate(
     yr_rating_reported = 
       ifelse(country_name == "Czech Republic" & year == 2021, 2024, 
-             ifelse(country_name == "Italy" & year == 2018, 2022, yr_rating_reported)))
+             ifelse(country_name == "Italy" & year == 2018, 2019, yr_rating_reported)))
 
 # Load CHESS data from 1999 to 2019
 chess_data <- 
@@ -344,7 +354,6 @@ list_new_party_names <-
           "SDA", # Sam
           "Independent", # no change
           "PDS",
-          "JV", # V
           "LC",
           "A", # Ap
           "KRF", # KrF
@@ -399,10 +408,10 @@ list_new_party_names_CHESS <-
 
 list_new_party_names_CHESS <-
   list_new_party_names_CHESS %>% 
-  bind_rows(list_new_party_names_CHESS %>% slice(11)) %>% 
+  bind_rows(list_new_party_names_CHESS %>% slice(10)) %>% 
   mutate(
     party_name_short = c(
-      "Sj", "Graen", "F", "Sam", "V", 
+      "Sj", "Graen", "F", "Sam", 
       "Ap", "KrF", "AWSP", "CDR 2000", 
       "SAP", "Cons", "CONS"
     )
@@ -448,29 +457,16 @@ paged_data_test2 <-
     chess_data_test %>% 
       select(-country_name, -party_name_short), 
     by = c("yr_rating_reported", "party_id")) %>% 
-  mutate(
-    lrgen = ifelse(
-      is.na(lrgen),
-      chess_data_test %>%
-        select(party_id, year = yr_rating_reported, lrgen) %>%
-        filter(party_id == party_id, year == year) %>%
-        pull(lrgen),
-      lrgen
-      ),
-      lrecon = ifelse(
-        is.na(lrecon),
-        chess_data_test %>%
-          select(party_id, year = yr_rating_reported, lrecon) %>%
-          filter(party_id == party_id, year == year) %>%
-          pull(lrecon),
-        lrecon
-      )
-    ) %>% 
   left_join(
     paged_data_test %>% 
       group_by(elecdate) %>% 
       summarise(n_elections = n()), 
-    by = "elecdate")
+    by = "elecdate") %>% 
+# Bring last observation forward (and then backward) if value is missing
+  group_by(party_id) %>% 
+  fill(lrgen, .direction = "downup") %>% 
+  fill(lrecon, .direction = "downup") %>% 
+  ungroup()
 
 
 # to-do: assign ratings to grant cycles based on proximity
@@ -481,4 +477,19 @@ paged_data_test2 <-
 
 # Assumptions: 3yr running average, 1 left-right ratings for every 4 years from 2000 (grouping)
 
+chess_ice_nor_2024 <- 
+  chess_data_test %>% 
+  filter(country_name %in% c("Iceland", "Norway"))
+chess_cro_2014 <-
+  chess_data_test %>% 
+  filter(country_name == "Croatia" & yr_rating_reported == 2014)
+paged_data_test2 <-
+  bind_rows(chess_ice_nor_2024, chess_cro_2014) %>% 
+  select(lrecon_01 = lrecon, lrgen_01 = lrgen, party_id) %>% 
+  right_join(paged_data_test2 %>% rename(lrgen_02 = lrgen, lrecon_02 = lrecon), by = "party_id") %>% 
+  mutate(lrgen = ifelse(is.na(lrgen_02), lrgen_01, lrgen_02), lrecon = ifelse(is.na(lrecon_02), lrecon_01, lrecon_02)) %>% 
+  select(everything(), -ends_with(c("01", "02")))
+
+# ratings we still need to fix
+paged_data_test2 %>% filter(year > 1999 & is.na(lrecon))
 
