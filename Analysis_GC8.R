@@ -480,10 +480,86 @@ paged_data_test2 <-
   select(lrecon_01 = lrecon, lrgen_01 = lrgen, party_id) %>% 
   right_join(paged_data_test2 %>% rename(lrgen_02 = lrgen, lrecon_02 = lrecon), by = "party_id") %>% 
   mutate(lrgen = ifelse(is.na(lrgen_02), lrgen_01, lrgen_02), lrecon = ifelse(is.na(lrecon_02), lrecon_01, lrecon_02)) %>% 
-  select(everything(), -ends_with(c("01", "02")))
+  select(country_name, year_in = year, year_out, everything(), -ends_with(c("01", "02")), -party_id_2)
 
 # ratings we still need to fix
 paged_data_test2 %>% filter(year > 1999 & is.na(lrecon))
+
+# Load MPD data
+mpd_data_long <- 
+  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/ManifestoPD/MPDataset_MPDS2024a.csv")
+
+# Select and rename relevant variables from MPD data
+mpd_data_short <-
+  mpd_data_long %>% 
+  select(
+    country_name = countryname, 
+    elecdate = date, 
+    mpd_party_id = party, 
+    party_name = partyname, 
+    party_short_name = partyabbrev, 
+    rile) %>% 
+  mutate(
+    elecdate = year(ym(elecdate)), 
+# Re-scale the Left-Right scale from -100-100 to 0-1 
+    lrgen = (rile + 100)/20
+    )
+
+tgf_public_donors %>% mutate(check = donor_name %in% countries_to_check) %>% filter(check == "FALSE") %>% mutate(check2 = donor_name %in% pull(mpd_data_short, country_name)) %>% filter(check2 == "TRUE") %>% print(n = Inf)
+
+# Load ParlGov data
+parlgov_data_long <- 
+  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/parlgov/view_cabinet.csv")
+
+# Select and rename relevant variables from ParlGov data
+parlgov_data_short <-
+  parlgov_data_long %>% 
+# Keep only the Prime Minister's party
+  filter(prime_minister == 1) %>% 
+  select(
+    country_name, 
+    elecdate = election_date, 
+    year_in = start_date, 
+    party_id, 
+    party_name_short, 
+    party_name = party_name_english) %>% 
+  mutate(
+    elecdate = year(elecdate), 
+    year_in = year(year_in)
+    ) %>% 
+# Join the party id from the MPD data
+  left_join(
+    read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/parlgov/view_party.csv") %>% 
+      select(party_id, cmp, chess), 
+    by= "party_id"
+    ) %>% 
+  rename(
+    mpd_party_id = cmp, 
+    parlgov_party_id = party_id,
+    chess_party_id = chess
+    ) %>% 
+# Join the Left-Right assessment from the MPD data to the ParlGov data
+  left_join(
+    mpd_data_short %>% 
+      select(elecdate, mpd_party_id, lrgen), 
+    by = c("elecdate", "mpd_party_id"), 
+    relationship = "many-to-many")
+
+donor_govrt_lrplc <- 
+  paged_data_test2 %>% 
+  rename(
+    chess_party_id = party_id
+    ) %>% 
+  left_join(
+    parlgov_data_short %>% 
+      rename(mpd_lrgen = lrgen) %>% 
+      select(elecdate, chess_party_id, mpd_lrgen), 
+    by = c("elecdate", "chess_party_id"), 
+    multiple = "first") %>% 
+  bind_rows(
+    parlgov_data_short %>%
+      mutate(check = country_name %in% pull(paged_data_test2, country_name)) %>% 
+      filter(check == "FALSE"))
 
 
 # to-do: assign ratings to grant cycles based on proximity
