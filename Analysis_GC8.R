@@ -483,7 +483,7 @@ paged_data_test2 <-
   select(country_name, year_in = year, year_out, everything(), -ends_with(c("01", "02")), -party_id_2)
 
 # ratings we still need to fix
-paged_data_test2 %>% filter(year > 1999 & is.na(lrecon))
+paged_data_test2 %>% filter(year_in > 1999 & is.na(lrecon))
 
 # Load MPD data
 mpd_data_long <- 
@@ -505,8 +505,6 @@ mpd_data_short <-
     lrgen = (rile + 100)/20
     )
 
-tgf_public_donors %>% mutate(check = donor_name %in% countries_to_check) %>% filter(check == "FALSE") %>% mutate(check2 = donor_name %in% pull(mpd_data_short, country_name)) %>% filter(check2 == "TRUE") %>% print(n = Inf)
-
 # Load ParlGov data
 parlgov_data_long <- 
   read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/parlgov/view_cabinet.csv")
@@ -514,21 +512,34 @@ parlgov_data_long <-
 # Select and rename relevant variables from ParlGov data
 parlgov_data_short <-
   parlgov_data_long %>% 
-# Keep only the Prime Minister's party
-  filter(prime_minister == 1) %>% 
   select(
     country_name, 
     elecdate = election_date, 
     year_in = start_date, 
     party_id, 
     party_name_short, 
-    party_name = party_name_english) %>% 
+    party_name = party_name_english,
+    cabinet_party,
+    prime_minister) %>% 
   mutate(
     elecdate = year(elecdate), 
     year_in = year(year_in)
-    ) %>% 
+    )
+
+# Keep only cabinet parties for Switzerland
+parlgov_data_short_ch <- 
+  parlgov_data_short %>% 
+  filter(country_name == "Switzerland" & cabinet_party == 1) 
+
+# Keep only the prime minister party for all other countries
+parlgov_data_short <-
+  parlgov_data_short %>% 
+  filter(prime_minister == 1 & country_name != "Switzerland") %>% 
+# Join Switzerland back with the rest of the countries
+  bind_rows(parlgov_data_short_ch) %>% 
+  select(-cabinet_party, -prime_minister) %>% 
 # Join the party id from the MPD data
-  left_join(
+  inner_join(
     read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/parlgov/view_party.csv") %>% 
       select(party_id, cmp, chess), 
     by= "party_id"
@@ -561,8 +572,17 @@ donor_govrt_lrplc <-
       mutate(check = country_name %in% pull(paged_data_test2, country_name)) %>% 
       filter(check == "FALSE"))
 
+tgf_public_donors <- 
+  list_data$data %>% 
+  pluck(3) %>% 
+  filter(donor_type == "public") %>% 
+  group_by(donor_name) %>%
+  count() %>% 
+  select(-n) %>% 
+  mutate(check = donor_name %in% pull(donor_govrt_lrplc, country_name))
 
-# to-do: assign ratings to grant cycles based on proximity
+# to-do 1: manually complete governments for the United States, South Korea, and the European Commission (for the EC, construct the L-R based on EU member parties)
+# to-do 2: assign ratings to grant cycles based on proximity
 
 # research longitudinal data on ideological placement for other regions (non-EU)
 
