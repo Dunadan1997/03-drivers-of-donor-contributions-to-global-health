@@ -581,6 +581,51 @@ tgf_public_donors <-
   select(-n) %>% 
   mutate(check = donor_name %in% pull(donor_govrt_lrplc, country_name))
 
+tibble(
+  country_name = c("United States"),
+  year = c(2001, 2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025),
+  year_out = c(2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025, 2027),
+  party_name_short = c("Rep_divided", "Rep_trifecta", "Rep_trifecta", "Rep_divided", 
+                       "Dem_trifecta", "Dem_divided", "Dem_divided", "Dem_divided",
+                       "Rep_trifecta", "Rep_divided", "Dem_trifecta", "Dem_divided",
+                       "Rep_trifecta"
+                       ),
+  party_id_mpd = c(),
+  elecdate = c(2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2024),
+  yr_rile_reported_mpd = c(2000, 2000, 2004, 2004, 2008, 2008, 2012, 2012, 2016, 2016, 2020, 2020, 2020)
+)
+
+# South Korean, from MPD
+skorea_data <-
+  tibble(
+    country_name = c("South Korea"),
+    year = c(1997, 2002, 2007, 2012, 2017, 2022),
+    year_out = c(2002, 2007, 2012, 2017, 2022, 2027),
+    party_name_short = c("NCNP", "MDP", "GNP", "NFP", "DPK", "PP"),
+    party_id_mpd = c(113421, 113430, 113630, 113630, 113441, 113450),
+    elecdate = c(1997, 2002, 2007, 2012, 2017, 2022),
+    yr_rile_reported_mpd = c(1996, 2000, 2004, 2012, 2016, 2020)
+  )
+
+# European Commission, from CHESS
+eurocomm_data <- 
+  tibble(
+    country_name = c("European Commission"),
+    year = c(1999, 2004, 2009, 2014, 2019, 2024),
+    year_out = c(2004, 2009, 2014, 2019, 2024, 2029),
+    party_name_short = c("DEM, DL", "PPD, PSD", "PPD, PSD", "CSV", "CDU", "CDU"),
+    party_id = c(819, 1206, 1206, 3801, 301, 301),
+    elecdate = c(1999, 2004, 2009, 2014, 2019, 2024),
+    yr_rating_reported = c(1999, 2002, 2010, 2014, 2019, 2024)
+  ) %>% 
+    left_join(
+      chess_data_test %>% select(party_id, yr_rating_reported, lrecon, lrgen), 
+      by = c("yr_rating_reported", "party_id")
+      ) %>% 
+  rowwise() %>% 
+  mutate(avg_rating = mean(c(lrgen, lrecon), na.rm = T))
+
+
 # to-do 1: manually complete governments for the United States, South Korea, and the European Commission (for the EC, construct the L-R based on EU member parties)
 # to-do 2: assign ratings to grant cycles based on proximity
 
