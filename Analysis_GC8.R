@@ -15,7 +15,7 @@ library(stringi)
 sheet_url <- 
   "https://docs.google.com/spreadsheets/d/1tc4cgr_uA36VCEW33GbZVTaPehKALThdjSd2QzBSYgM/edit?gid=406461073#gid=406461073"
 
-# Create function to load data
+# Create functions to load data
 my_sheet_names <- 
   c(
     "OECD" = "ODA Disbursements 1997-2023", 
@@ -30,6 +30,22 @@ load_data <-
     )
   }
 
+load_data <- 
+  function(location, source_name = NULL, url_link = NULL, sheet_name = NULL) {
+    if (location == "Google Drive") {
+      read_sheet(
+        sheet_url, sheet = my_sheet_names[[sheet_name]]
+      ) 
+    } else if (location == "Desktop") {
+      list_data %>% 
+        add_row(
+          source = source_name,
+          data = list(as_tibble(read_csv(url_link)))
+          )
+    }
+  }
+
+
 # Load OEDC, CGD, and TGF data
 list_data <- tibble(
   source = names(my_sheet_names),
@@ -37,7 +53,7 @@ list_data <- tibble(
 )
 
 for (i in seq_along(my_sheet_names)) {
-  list_data$data[[i]] <- load_data(i) 
+  list_data$data[[i]] <- load_data("Google Drive", sheet_name = i) 
 }
 
 # create a copy of the loaded data
@@ -45,9 +61,10 @@ copy_list_data <-
   list_data
 
 # Select and rename columns from OECD data
-list_data$data[[1]] <- 
+list_data$data[[which(list_data$source == "OECD")]] <- 
   list_data %>% 
-  pluck(2, 1) %>% 
+  filter(source == "OECD") %>% 
+  pluck(2) %>%
   select(
     "Donor", 
     "TIME_PERIOD", 
@@ -65,11 +82,14 @@ list_data$data[[1]] <-
     oda_running_avg = slide_mean(
       oda_spent, before = 1, after = 1, complete = FALSE, na_rm = TRUE
       )
-    )
+    ) %>% 
+  ungroup()
 
 # Gather CGD data by name of organization and replenishment year
-list_data$data[[2]] <-
-  list_data$data[[2]] %>% 
+list_data$data[[which(list_data$source == "CDG")]] <-
+  list_data %>% 
+  filter(source == "CDG") %>% 
+  pluck(2) %>% 
   pivot_longer(
     cols = matches("\\d{4}$"), 
     names_to = "org_year", 
@@ -99,7 +119,9 @@ list_data$data[[2]] <-
 
 # Create table summarizing the number of replenishments per Grant Cycle
 tab_n_rplnshmnt <-
-  list_data$data[[2]] %>%
+  list_data %>% 
+  filter(source == "CDG") %>% 
+  pluck(2) %>%
   select(-donor_name) %>% 
   group_by(org, year, grant_cycle) %>% 
   summarise(sum = sum(money, na.rm = T)) %>% 
@@ -107,8 +129,10 @@ tab_n_rplnshmnt <-
   summarise(n_rplnshmnt = n())
 
 # Spread CDG data by MDB and Health Fun
-list_data$data[[2]] <-
-  list_data$data[[2]] %>%
+list_data$data[[which(list_data$source == "CDG")]] <-
+  list_data %>% 
+  filter(source == "CDG") %>% 
+  pluck(2) %>%
   pivot_wider(names_from = org, values_from = money) %>% 
   group_by(donor_name, grant_cycle) %>% 
   summarise(
@@ -125,12 +149,14 @@ list_data$data[[2]] <-
     CEPI = sum(CEPI, na.rm = T)
   ) %>% 
 # Join the variable n_rplnshmnt into the CGD data
-  left_join(tab_n_rplnshmnt, by = "grant_cycle")
+  left_join(tab_n_rplnshmnt, by = "grant_cycle") %>% 
+  ungroup()
 
 # Create a Grant Cycle variable in the TGF data
-list_data$data[[3]] <- 
+list_data$data[[which(list_data$source == "TGF")]] <- 
   list_data %>% 
-  pluck(2,3) %>% 
+  filter(source == "TGF") %>% 
+  pluck(2) %>% 
   mutate(
     grant_cycle = ifelse(year == 2001, "GC0", 
                          ifelse(year == 2005, "GC1", 
@@ -151,12 +177,17 @@ list_data$data[[3]] <-
 
 
 # Load IMF data
-IMF_data <- 
-  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/IMF/dataset_2024-12-22T16_56_47.354302444Z_DEFAULT_INTEGRATION_IMF.FAD_FM_2.0.0.csv")
+list_data <- load_data(
+  location = "Desktop", 
+  source_name = "IMF", 
+  url_link = "/Users/brunoalvesdecarvalho/Desktop/Research/IMF/dataset_2024-12-22T16_56_47.354302444Z_DEFAULT_INTEGRATION_IMF.FAD_FM_2.0.0.csv"
+  )
 
-# Organize IMF data into appropriate format
-IMF_test<-
-  IMF_data %>% 
+# Select relevant variables from IMF data
+list_data$data[[which(list_data$source == "IMF")]] <-
+  list_data %>% 
+  filter(source == "IMF") %>% 
+  pluck(2) %>% 
   select(
     donor_name = COUNTRY.Name, 
     fiscal_indicator = INDICATOR.Name, 
@@ -168,8 +199,10 @@ IMF_test<-
   mutate(
     donor_name = str_extract(donor_name, "^[^,]+")
   ) %>% 
+# Filter out non-donor countries 
   filter(donor_name != "Congo") %>% 
   pivot_wider(names_from = fiscal_indicator, values_from = obs_value) %>% 
+# Rename variables
   rename(
     expdtr_prctgdp = `Expenditure, Percent of GDP`, 
     revn_prctgdp = `Revenue, General government, Percent of GDP`, 
@@ -179,11 +212,8 @@ IMF_test<-
     grsdbt_prctgdp = `Gross debt, Percent of GDP`, 
     ntdbt_prctgdp = `Net debt, Percent of GDP`, 
     prmryadjfsclblc_prctgdp = `Cyclically adjusted primary balance, Percent of potential GDP`
-    )
-
+    ) %>% 
 # Create rolling average of fiscal indicators
-IMF_test <- 
-  IMF_test %>%
   group_by(donor_name) %>% 
   mutate(
     across(
@@ -192,17 +222,22 @@ IMF_test <-
       .names = "{.col}_rllavg" 
       )
     ) %>% 
-# renaming rolling average columns
+# Rename rolling average columns
   rename_with(~ str_replace_all(.x, "_prctgdp_", "_")) %>% 
   ungroup()
 
 # Load PAGED data
-paged_data <- 
-  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/PAGED-WECEE.csv")
+list_data <- load_data(
+  location = "Desktop", 
+  source_name = "PAGED", 
+  url_link = "/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/PAGED-WECEE.csv"
+)
 
 # Select relevant variables from PAGED data
-paged_data_test <- 
-  paged_data %>% 
+list_data$data[[which(list_data$source == "PAGED")]] <- 
+  list_data %>% 
+  filter(source == "PAGED") %>% 
+  pluck(2) %>%  
   select(
     country_name, 
     year = year_in, 
@@ -210,6 +245,7 @@ paged_data_test <-
     cab_composition1,
     elecdate
     ) %>% 
+# Clean abreviations of party names
   separate_wider_delim(cab_composition1, delim = ",", names = "party_name_short", too_many = "drop") %>% 
   mutate(
     party_name_short = stri_trans_general(party_name_short, "latin-ascii"),
@@ -232,13 +268,13 @@ paged_data_test <-
              )
     )
 
-# Complete PAGED data with country governments in 2024
+# Complete PAGED data with political parties of country governments in 2024
 paged_data_2024 <-
   tibble(
     country_name = c("Austria", "Belgium", "Bulgaria", "Croatia", "Denmark", "Denmark", "Estonia", "Finland", "France", "Germany", "Greece", 
                      "Hungary", "Iceland", "Iceland", "Ireland", "Ireland", "Italy", "Latvia", "Lithuania", "Netherlands", "Netherlands", 
                      "Norway", "Poland", "Portugal", "Portugal", "Portugal", "Romania", "Slovakia", "Slovenia", "Spain", "Spain", "Sweden", "United Kingdom", 
-                     "United Kingdom"), # remove Czech Republic, Add 1 more for Denmark / Iceland / Ireland / Netherlands / Spain / United Kingdom, Add 2 for Portugal
+                     "United Kingdom"), 
     year = c(2024, 2024, 2024, 2024, 2019, 2022, 2023, 2023, 2024, 2021, 2023, 2022, 2021, 2024, 2020, 2024, 2022, 2022,
              2024, 2021, 2024, 2021, 2023, 2019, 2022, 2024, 2024, 2023, 2022, 2020, 2023, 2022, 2019, 2024),
     year_out = NA,
@@ -252,9 +288,11 @@ paged_data_2024 <-
                            2024, 2019, 2024, 2019, 2024, 2019, 2024, 2024, 2024, 2024, 2024, 2019, 2024, 2024, 2019, 2024)
     )
 
-# Add 2024 governments to PAGED dataset
-paged_data_test <-
-  paged_data_test %>% 
+# Add 2024 government political parties to PAGED dataset
+list_data$data[[which(list_data$source == "PAGED")]] <-
+  list_data %>% 
+  filter(source == "PAGED") %>% 
+  pluck(2) %>% 
   bind_rows(paged_data_2024) %>% 
 # Correct minor issues with cabinet periods
   mutate(
@@ -263,20 +301,35 @@ paged_data_test <-
              ifelse(country_name == "Italy" & year == 2018, 2019, yr_rating_reported)))
 
 # Load CHESS data from 1999 to 2019
-chess_data <- 
-  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/1999-2019_CHES_dataset_means(v3).csv")
+list_data <- 
+  load_data(
+    location = "Desktop", 
+    source_name = "CHESS", 
+    url_link = "/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/1999-2019_CHES_dataset_means(v3).csv"
+  )
 
 # Load CHESS data from 2024
-chess_data_2024 <- 
-  read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/CHES_Ukraine_March_2024.csv") %>% 
+list_data <- 
+  load_data(
+    location = "Desktop", 
+    source_name = "CHESS_24", 
+    url_link = "/Users/brunoalvesdecarvalho/Desktop/Research/Party_Orientation/chess/CHES_Ukraine_March_2024.csv"
+  )
+
+# Select relevant variables
+list_data$data[[which(list_data$source == "CHESS_24")]] <-
+  list_data %>%
+  filter(source == "CHESS_24") %>% 
+  pluck(2) %>% 
   select(country_name = country, party_name_short = party, lrecon, party_id) %>%
+# Clean political party abbreviations
   mutate(yr_rating_reported = 2024,
          party_name_short = stri_trans_general(party_name_short, "latin-ascii"),
-# Correct party abbreviation
          party_name_short = ifelse(party_id == 2412, "JV", party_name_short)
          ) 
 
-chess_country_data <- 
+# Create tibble attributing countries names to country IDs in the CHESS data
+chess_country_names <- 
   tibble(
     country_id = c(1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 16, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 31, 37, 38, 40),
     country_name = c("Belgium", "Denmark", "Germany", "Greece", "Spain", "France", "Ireland", "Italy", "Netherlands", "United Kingdom",
@@ -285,13 +338,24 @@ chess_country_data <-
     )
 
 # Select relevant variables from CHESS data
-chess_data_test <- 
-  chess_data %>% 
+list_data$data[[which(list_data$source == "CHESS")]] <-
+  list_data %>% 
+  filter(source == "CHESS")
+  pluck(2) %>% 
   select(country_id = country, yr_rating_reported = year, party_name_short = party, lrgen, lrecon, party_id) %>% 
-  left_join(chess_country_data, by = "country_id") %>% 
 # Add country names
-  bind_rows(chess_data_2024) %>% 
+  left_join(chess_country_names, by = "country_id") %>% 
+# Add 2024 data
+  bind_rows(
+    list_data %>%
+      filter(source == "CHESS_24") %>% 
+      pluck(2)) %>% 
   select(country_name, everything(), -country_id)
+
+# Remove CHESS_24 as 2024 data was combined with the rest of the CHESS data
+list_data <-
+  list_data %>% 
+  filter(source != "CHESS_24")
 
 # Create a table of all political parties in PAGED
 parties_list <- 
