@@ -283,7 +283,7 @@ list_data$data[[which(list_data$source == "CHES24")]] <-
   list_data %>%
   filter(source == "CHES24") %>% 
   pluck(2,1) %>% 
-  select(country_name = country, party_name_short = party, lrecon, party_id_ches = party_id) %>%
+  select(country_name = country, party_name_short = party, lrecon_ches = lrecon, party_id_ches = party_id) %>%
 # Clean political party abbreviations
   mutate(yr_rating_reported = 2024,
          party_name_short = stri_trans_general(party_name_short, "latin-ascii"),
@@ -299,12 +299,12 @@ ches_country_names <-
               "Lithuania", "Poland", "Romania", "Slovakia", "Slovenia", "Croatia", "Malta", "Luxembourg", "Cyprus")
     )
 
-# Select relevant variables from CHESS data
+# Select relevant variables from CHES data
 list_data$data[[which(list_data$source == "CHES")]] <-
   list_data %>% 
   filter(source == "CHES") %>% 
   pluck(2,1) %>% 
-  select(country_id = country, yr_rating_reported = year, party_name_short = party, lrgen, lrecon, party_id_ches = party_id) %>% 
+  select(country_id = country, yr_rating_reported = year, party_name_short = party, lrgen_ches = lrgen, lrecon_ches = lrecon, party_id_ches = party_id) %>% 
 # Add country names
   left_join(ches_country_names, by = "country_id") %>% 
 # Add 2024 data
@@ -491,22 +491,51 @@ PAGED_CHES <-
   filter(source == "PAGED") %>% 
   pluck(2,1) %>% 
   filter(!is.na(party_name_short)) %>% 
-# Join party IDs from CHES to PAGED using party names
+# Join party IDs from CHES to PAGED using country and party names
   left_join(ches_party_ids, by = c("country_name", "party_name_short")) %>%
-# Join ideological ratings from CHES to PAGED using party IDs
+# Join ideological ratings from CHES to PAGED using party IDs and the year of Expert Survey (CHES) was conducted
   left_join(
     list_data %>%
       filter(source == "CHES") %>% 
       pluck(2,1) %>% 
       select(-country_name, -party_name_short), 
     by = c("yr_rating_reported", "party_id_ches")) %>% 
-# Bring last rating forward (and then backward) if rating is missing
+# Bring last rating forward or backward if ideological rating is missing
   group_by(party_id_ches) %>% 
-  fill(lrgen, .direction = "downup") %>% 
-  fill(lrecon, .direction = "downup") %>% 
+  fill(lrgen_ches, .direction = "downup") %>% 
+  fill(lrecon_ches, .direction = "downup") %>% 
   ungroup()
+  
+# Bring last rating forward or backward if ideological rating is missing; 
+  # Iceland, Norway and Croatia need a special fix because the Expert Survey (CHES) was only conducted in 2024 / 2014
+  # So we assign this single ideological rating regardless of the historical period
+ches_ice_nor_2024 <- 
+  list_data %>% 
+  filter(source == "CHES") %>% 
+  pluck(2,1) %>% 
+  filter(country_name %in% c("Iceland", "Norway"))
+ches_cro_2014 <-
+  list_data %>% 
+  filter(source == "CHES") %>% 
+  pluck(2,1) %>% 
+  filter(country_name == "Croatia" & yr_rating_reported == 2014)
+PAGED_CHES <-
+  bind_rows(ches_ice_nor_2024, ches_cro_2014) %>% 
+  select(
+    lrecon_ches_01 = lrecon_ches, 
+    lrgen_ches_01 = lrgen_ches, 
+    party_id_ches
+    ) %>% 
+  right_join(
+    PAGED_CHES %>% 
+      rename(lrgen_ches_02 = lrgen_ches, lrecon_ches_02 = lrecon_ches), 
+    by = "party_id_ches") %>% 
+  mutate(
+    lrgen_ches = ifelse(is.na(lrgen_ches_02), lrgen_ches_01, lrgen_ches_02), 
+    lrecon_ches = ifelse(is.na(lrecon_ches_02), lrecon_ches_01, lrecon_ches_02)) %>% 
+  select(country_name, year_in = year, year_out, everything(), -ends_with(c("01", "02")))
 
-# Add PAGED_CHES dataset with the rest of the data
+# Store PAGED_CHES dataset with the rest of the data
 list_data <-
   list_data %>% 
   add_row(
@@ -514,48 +543,37 @@ list_data <-
     data = list(PAGED_CHES)
   )
 
-  
-# Bring last observation backward if value is missing
-chess_ice_nor_2024 <- 
-  chess_data_test %>% 
-  filter(country_name %in% c("Iceland", "Norway"))
-chess_cro_2014 <-
-  chess_data_test %>% 
-  filter(country_name == "Croatia" & yr_rating_reported == 2014)
-paged_data_test2 <-
-  bind_rows(chess_ice_nor_2024, chess_cro_2014) %>% 
-  select(lrecon_01 = lrecon, lrgen_01 = lrgen, party_id) %>% 
-  right_join(paged_data_test2 %>% rename(lrgen_02 = lrgen, lrecon_02 = lrecon), by = "party_id") %>% 
-  mutate(lrgen = ifelse(is.na(lrgen_02), lrgen_01, lrgen_02), lrecon = ifelse(is.na(lrecon_02), lrecon_01, lrecon_02)) %>% 
-  select(country_name, year_in = year, year_out, everything(), -ends_with(c("01", "02")), -party_id_2)
-
 # ratings we still need to fix
-paged_data_test2 %>% filter(year_in > 1999 & is.na(lrecon))
+PAGED_CHES %>% filter(year_in > 1999 & is.na(lrecon_ches))
 
-# Select and rename relevant variables from MPD data
-mpd_data_short <-
-  mpd_data_long %>% 
+# Select and rename relevant variables from MP data
+list_data$data[[which(list_data$source == "MP")]] <-
+  list_data %>% 
+  filter(source == "MP") %>% 
+  pluck(2,1) %>% 
   select(
     country_name = countryname, 
     elecdate = date, 
-    mpd_party_id = party, 
+    party_id_mp = party, 
     party_name = partyname, 
     party_short_name = partyabbrev, 
-    rile) %>% 
+    lrgen_mp = rile) %>% 
   mutate(
     elecdate = year(ym(elecdate)), 
 # Re-scale the Left-Right scale from -100-100 to 0-1 
-    lrgen = (rile + 100)/20
+    lrgen_mp = (lrgen_mp + 100)/20
     )
 
 # Select and rename relevant variables from ParlGov data
-parlgov_data_short <-
-  parlgov_data_long %>% 
+list_data$data[[which(list_data$source == "PARLGOV1")]] <-
+  list_data %>% 
+  filter(source == "PARLGOV1") %>% 
+  pluck(2,1) %>% 
   select(
     country_name, 
     elecdate = election_date, 
     year_in = start_date, 
-    party_id, 
+    party_id_parlgov = party_id, 
     party_name_short, 
     party_name = party_name_english,
     cabinet_party,
@@ -566,104 +584,130 @@ parlgov_data_short <-
     )
 
 # Keep only cabinet parties for Switzerland
-parlgov_data_short_ch <- 
-  parlgov_data_short %>% 
+parlgov_data_ch <- 
+  list_data %>%
+  filter(source == "PARLGOV1") %>% 
+  pluck(2,1) %>% 
   filter(country_name == "Switzerland" & cabinet_party == 1) 
 
 # Keep only the prime minister party for all other countries
-parlgov_data_short <-
-  parlgov_data_short %>% 
+list_data$data[[which(list_data$source == "PARLGOV1")]] <-
+  list_data %>%
+  filter(source == "PARLGOV1") %>% 
+  pluck(2,1) %>% 
   filter(prime_minister == 1 & country_name != "Switzerland") %>% 
 # Join Switzerland back with the rest of the countries
-  bind_rows(parlgov_data_short_ch) %>% 
+  bind_rows(parlgov_data_ch) %>% 
   select(-cabinet_party, -prime_minister) %>% 
-# Join the party id from the MPD data
+# Join the party ID from the MP data
   inner_join(
-    read_csv("/Users/brunoalvesdecarvalho/Desktop/Research/Party_Government/parlgov/view_party.csv") %>% 
-      select(party_id, cmp, chess), 
-    by= "party_id"
+   list_data %>% 
+     filter(source == "PARLGOV2") %>% 
+     pluck(2,1) %>% 
+     select(party_id_parlgov = party_id, cmp, chess), 
+    by = "party_id_parlgov"
     ) %>% 
   rename(
-    mpd_party_id = cmp, 
-    parlgov_party_id = party_id,
-    chess_party_id = chess
-    ) %>% 
-# Join the Left-Right assessment from the MPD data to the ParlGov data
+    party_id_mp = cmp, 
+    party_id_chess = chess
+    ) 
+
+# Join the Left-Right assessment from the MP data to the ParlGov data
+PARLGOV_MP <-
+  list_data %>% 
+  filter(source == "PARLGOV1") %>% 
+  pluck(2,1) %>% 
   left_join(
-    mpd_data_short %>% 
-      select(elecdate, mpd_party_id, lrgen), 
-    by = c("elecdate", "mpd_party_id"), 
+    list_data %>%
+      filter(source == "MP") %>% 
+      pluck(2,1) %>% 
+      select(elecdate, party_id_mp, lrgen_mp), 
+    by = c("elecdate", "party_id_mp"), 
     relationship = "many-to-many")
 
-donor_govrt_lrplc <- 
-  paged_data_test2 %>% 
-  rename(
-    chess_party_id = party_id
-    ) %>% 
-  left_join(
-    parlgov_data_short %>% 
-      rename(mpd_lrgen = lrgen) %>% 
-      select(elecdate, chess_party_id, mpd_lrgen), 
-    by = c("elecdate", "chess_party_id"), 
-    multiple = "first") %>% 
-  bind_rows(
-    parlgov_data_short %>%
-      mutate(check = country_name %in% pull(paged_data_test2, country_name)) %>% 
-      filter(check == "FALSE"))
+# Store PARLGOV_MP dataset with the rest of the data
+list_data <-
+  list_data %>% 
+  add_row(
+    source = "PARLGOV_MP",
+    data = list(PARLGOV_MP)
+  )
 
-tgf_public_donors <- 
-  list_data$data %>% 
-  pluck(3) %>% 
-  filter(donor_type == "public") %>% 
-  group_by(donor_name) %>%
-  count() %>% 
-  select(-n) %>% 
-  mutate(check = donor_name %in% pull(donor_govrt_lrplc, country_name))
+# Create table of United States governments since 1999
+Untd_States_data <-
+  tibble(
+    country_name = c("United States"),
+    year = c(2001, 2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025),
+    year_out = c(2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025, 2027),
+    party_name_short = c("Rep_divided", "Rep_trifecta", "Rep_trifecta", "Rep_divided", 
+                         "Dem_trifecta", "Dem_divided", "Dem_divided", "Dem_divided",
+                         "Rep_trifecta", "Rep_divided", "Dem_trifecta", "Dem_divided",
+                         "Rep_trifecta"
+    ),
+    party_id_mp = c(61620, 61620, 61620, 61620, 61320, 61320, 61320, 61320, 61620, 61620, 61320, 61320, 61620),
+    elecdate = c(2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2024),
+    yr_rating_reported_mp = c(2000, 2000, 2004, 2004, 2008, 2008, 2012, 2012, 2016, 2016, 2020, 2020, 2020)
+  )
 
-tibble(
-  country_name = c("United States"),
-  year = c(2001, 2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025),
-  year_out = c(2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025, 2027),
-  party_name_short = c("Rep_divided", "Rep_trifecta", "Rep_trifecta", "Rep_divided", 
-                       "Dem_trifecta", "Dem_divided", "Dem_divided", "Dem_divided",
-                       "Rep_trifecta", "Rep_divided", "Dem_trifecta", "Dem_divided",
-                       "Rep_trifecta"
-                       ),
-  party_id_mpd = c(),
-  elecdate = c(2000, 2002, 2004, 2006, 2008, 2010, 2012, 2014, 2016, 2018, 2020, 2022, 2024),
-  yr_rile_reported_mpd = c(2000, 2000, 2004, 2004, 2008, 2008, 2012, 2012, 2016, 2016, 2020, 2020, 2020)
-)
-
-# South Korean, from MPD
-skorea_data <-
+# Create table of South Korean governments since 1999
+sth_korea_data <-
   tibble(
     country_name = c("South Korea"),
     year = c(1997, 2002, 2007, 2012, 2017, 2022),
     year_out = c(2002, 2007, 2012, 2017, 2022, 2027),
     party_name_short = c("NCNP", "MDP", "GNP", "NFP", "DPK", "PP"),
-    party_id_mpd = c(113421, 113430, 113630, 113630, 113441, 113450),
+    party_id_mp = c(113421, 113430, 113630, 113630, 113441, 113450),
     elecdate = c(1997, 2002, 2007, 2012, 2017, 2022),
-    yr_rile_reported_mpd = c(1996, 2000, 2004, 2012, 2016, 2020)
+    yr_rating_reported_mp = c(1996, 2000, 2004, 2012, 2016, 2020)
   )
 
-# European Commission, from CHESS
+# Join data from US and South Korea
+sthkor_untdstates_data <- 
+  bind_rows(sth_korea_data, Untd_States_data) %>% 
+  left_join(
+    list_data %>% 
+      filter(source == "MP") %>% 
+      pluck(2,1) %>% 
+      select(party_id_mp, yr_rating_reported_mp = elecdate, lrgen_mp),
+    by = c("party_id_mp", "yr_rating_reported_mp")
+  )
+
+# Store US and South Korea with the rest of the PARLGOV_MP data
+list_data$data[[which(list_data$source == "PARLGOV_MP")]] <-
+  bind_rows(
+    list_data %>% 
+      filter(source == "PARLGOV_MP") %>% 
+      pluck(2,1),
+    sthkor_untdstates_data
+  )
+
+# Create table of European Commission governments since 1999
 eurocomm_data <- 
   tibble(
     country_name = c("European Commission"),
     year = c(1999, 2004, 2009, 2014, 2019, 2024),
     year_out = c(2004, 2009, 2014, 2019, 2024, 2029),
     party_name_short = c("DEM, DL", "PPD, PSD", "PPD, PSD", "CSV", "CDU", "CDU"),
-    party_id = c(819, 1206, 1206, 3801, 301, 301),
+    party_id_ches = c(819, 1206, 1206, 3801, 301, 301),
     elecdate = c(1999, 2004, 2009, 2014, 2019, 2024),
     yr_rating_reported = c(1999, 2002, 2010, 2014, 2019, 2024)
   ) %>% 
-    left_join(
-      chess_data_test %>% select(party_id, yr_rating_reported, lrecon, lrgen), 
-      by = c("yr_rating_reported", "party_id")
-      ) %>% 
-  rowwise() %>% 
-  mutate(avg_rating = mean(c(lrgen, lrecon), na.rm = T))
+  left_join(
+    list_data %>% 
+      filter(source == "CHES") %>% 
+      pluck(2,1) %>% 
+      select(party_id_ches, lrgen_ches, lrecon_ches, yr_rating_reported),
+    by = c("party_id_ches", "yr_rating_reported")
+  )
 
+# Store EU data with the rest of the PAGED_CHES data
+list_data$data[[which(list_data$source == "PAGED_CHES")]] <-
+  bind_rows(
+    list_data %>% 
+      filter(source == "PAGED_CHES") %>% 
+      pluck(2,1),
+    eurocomm_data
+  )
 
 # to-do 2: assign ratings to grant cycles based on proximity
 # to-do 3: calculate n_elections for each year
