@@ -609,7 +609,7 @@ list_data$data[[which(list_data$source == "PARLGOV1")]] <-
     ) %>% 
   rename(
     party_id_mp = cmp, 
-    party_id_chess = chess
+    party_id_ches = chess
     ) 
 
 # Join the Left-Right assessment from the MP data to the ParlGov data
@@ -637,7 +637,7 @@ list_data <-
 Untd_States_data <-
   tibble(
     country_name = c("United States"),
-    year = c(2001, 2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025),
+    year_in = c(2001, 2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025),
     year_out = c(2003, 2005, 2007, 2009, 2011, 2013, 2015, 2017, 2019, 2021, 2023, 2025, 2027),
     party_name_short = c("Rep_divided", "Rep_trifecta", "Rep_trifecta", "Rep_divided", 
                          "Dem_trifecta", "Dem_divided", "Dem_divided", "Dem_divided",
@@ -653,7 +653,7 @@ Untd_States_data <-
 sth_korea_data <-
   tibble(
     country_name = c("South Korea"),
-    year = c(1997, 2002, 2007, 2012, 2017, 2022),
+    year_in = c(1997, 2002, 2007, 2012, 2017, 2022),
     year_out = c(2002, 2007, 2012, 2017, 2022, 2027),
     party_name_short = c("NCNP", "MDP", "GNP", "NFP", "DPK", "PP"),
     party_id_mp = c(113421, 113430, 113630, 113630, 113441, 113450),
@@ -685,7 +685,7 @@ list_data$data[[which(list_data$source == "PARLGOV_MP")]] <-
 eurocomm_data <- 
   tibble(
     country_name = c("European Commission"),
-    year = c(1999, 2004, 2009, 2014, 2019, 2024),
+    year_in = c(1999, 2004, 2009, 2014, 2019, 2024),
     year_out = c(2004, 2009, 2014, 2019, 2024, 2029),
     party_name_short = c("DEM, DL", "PPD, PSD", "PPD, PSD", "CSV", "CDU", "CDU"),
     party_id_ches = c(819, 1206, 1206, 3801, 301, 301),
@@ -709,12 +709,13 @@ list_data$data[[which(list_data$source == "PAGED_CHES")]] <-
     eurocomm_data
   )
 
+# Gather ideological placement of governments per year_in (create GC variable)
+full_join(list_data$data[[10]], list_data$data[[11]], by = c("country_name", "year_in", "party_id_ches")) %>% select(country_name, year_in, lrgen_ches, lrecon_ches, lrgen_mp) %>% distinct() %>% arrange(country_name, year_in) %>% group_by(country_name, year_in) %>% summarise(mean_1 = mean(lrgen_mp, na.rm = T), mean_2 = mean(lrgen_ches, na.rm = T), mean_3 = mean(lrecon_ches, na.rm = T))
+# Calculate number of elections per year (create GC variable)
+full_join(list_data$data[[10]], list_data$data[[11]], by = c("country_name", "elecdate")) %>% select(country_name, elecdate) %>% distinct() %>% group_by(elecdate) %>% count()
+
 # to-do 2: assign ratings to grant cycles based on proximity
 # to-do 3: calculate n_elections for each year
-
-# research longitudinal data on ideological placement for other regions (non-EU)
-
-# need to find the left-right info for Iceland: until 2024 = LG, after 2024 = Sam (or SDA)
 
 # Assumptions: 3yr running average, 1 left-right ratings for every 4 years from 2000 (grouping)
 
