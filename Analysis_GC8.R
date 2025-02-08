@@ -709,15 +709,33 @@ list_data$data[[which(list_data$source == "PAGED_CHES")]] <-
     eurocomm_data
   )
 
-# Gather ideological placement of governments per year_in (create GC variable)
+# Gather ideological placement of governments per year_in (create continuous time-scale!), Also the below won't work because we need the governing party name for some countries
 full_join(list_data$data[[10]], list_data$data[[11]], by = c("country_name", "year_in", "party_id_ches")) %>% select(country_name, year_in, lrgen_ches, lrecon_ches, lrgen_mp) %>% distinct() %>% arrange(country_name, year_in) %>% group_by(country_name, year_in) %>% summarise(mean_1 = mean(lrgen_mp, na.rm = T), mean_2 = mean(lrgen_ches, na.rm = T), mean_3 = mean(lrecon_ches, na.rm = T))
 # Calculate number of elections per year (create GC variable)
 full_join(list_data$data[[10]], list_data$data[[11]], by = c("country_name", "elecdate")) %>% select(country_name, elecdate) %>% distinct() %>% group_by(elecdate) %>% count()
 
-# to-do 2: assign ratings to grant cycles based on proximity
-# to-do 3: calculate n_elections for each year
+# Create master dataset!
 
 # Assumptions: 3yr running average, 1 left-right ratings for every 4 years from 2000 (grouping)
 
+country_test <- 
+  list_data$data[[which(list_data$source == "PAGED_CHES")]] %>% 
+  distinct(country_name) %>% pull()
 
+test_function <- function(index) {
+  index <- 
+    which(list_data$data[[which(list_data$source == "PAGED_CHES")]]$country_name == country_test[[index]])
+  table_store <-
+    list_data$data[[which(list_data$source == "PAGED_CHES")]] %>% 
+    slice(index) %>% 
+    mutate(year = year_in) %>% 
+    full_join(tibble(year = min(.$year):max(.$year))) %>% 
+    arrange(year) %>% 
+    fill(country_name, party_id_ches, party_name_short, lrgen_ches, lrecon_ches, .direction = "down")
+}
+
+table_test <- 
+  map(seq_along(country_test), test_function)
+
+map_dfr(table_test, bind_rows)
 
