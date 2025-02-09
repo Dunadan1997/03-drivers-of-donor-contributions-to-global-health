@@ -729,13 +729,77 @@ test_function <- function(index) {
     list_data$data[[which(list_data$source == "PAGED_CHES")]] %>% 
     slice(index) %>% 
     mutate(year = year_in) %>% 
-    full_join(tibble(year = min(.$year):max(.$year))) %>% 
+    full_join(tibble(year = min(.$year):2025)) %>% 
     arrange(year) %>% 
-    fill(country_name, party_id_ches, party_name_short, lrgen_ches, lrecon_ches, .direction = "down")
+    fill(country_name, .direction = "down")
 }
 
 table_test <- 
   map(seq_along(country_test), test_function)
 
-map_dfr(table_test, bind_rows)
+test_01 <- 
+  map_dfr(table_test, bind_rows)
+
+country_test_02 <- 
+  list_data$data[[which(list_data$source == "PARLGOV_MP")]] %>% 
+  distinct(country_name) %>% pull()
+
+test_function_02 <- function(index) {
+  index <- 
+    which(list_data$data[[which(list_data$source == "PARLGOV_MP")]]$country_name == country_test_02[[index]])
+  table_store <-
+    list_data$data[[which(list_data$source == "PARLGOV_MP")]] %>% 
+    slice(index) %>% 
+    mutate(year = year_in) %>% 
+    full_join(tibble(year = min(.$year):2025)) %>% 
+    arrange(year) %>% 
+    fill(country_name, .direction = "down")
+}
+
+table_test_02 <- 
+  map(seq_along(country_test_02), test_function_02)
+
+test_02 <-
+  map_dfr(table_test_02, bind_rows)
+
+# two cases of many to many relationship: Norway (two governments started in 1945) and Croatia (two governments started in 2017), solution: group by year and summarize mean of political ideology
+test_03 <- 
+  full_join(
+    test_01, 
+    test_02 %>% 
+      select(
+        country_name, 
+        year, 
+        year_in,
+        year_out,
+        elecdate,
+        party_name, 
+        lrgen_mp, 
+        party_id_ches, 
+        party_id_mp, 
+        party_id_parlgov), 
+    by = c("country_name", "year", "party_id_ches"), 
+    relationship = "many-to-many") %>% 
+  mutate(
+    year_in = ifelse(is.na(year_in.x), year_in.y, year_in.x), 
+    year_out = ifelse(is.na(year_out.x), year_out.y, year_out.x),
+    elecdate = ifelse(is.na(elecdate.x), elecdate.y, elecdate.x)
+    ) %>% 
+  group_by(country_name, year) %>% 
+  mutate(across(contains("_id_"), ~ as.character(.))) %>% 
+  summarise(
+    across(where(is.numeric), ~ mean(., na.rm = TRUE)), 
+    across(where(is.character), ~ str_c(unique(.), collapse = ", "))) %>% 
+  fill(party_name, party_name_short, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_")) %>% 
+  ungroup() %>% 
+  mutate(across(everything(), ~ ifelse(is.nan(.), NA, .))) %>% 
+  select(country_name, year, elecdate, party_name, party_name_short, year_in, year_out, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_"),
+         -year_in.x, -year_out.x, -year_in.y, -year_out.y) %>% 
+# Consolidation of Swiss data
+  mutate(
+    year_in = replace(year_in, is.na(year_in) & year == 2023, 2023), 
+    elecdate = replace(elecdate, is.na(elecdate) & year == 2023, 2023)) 
+
+
+
 
