@@ -709,46 +709,30 @@ list_data$data[[which(list_data$source == "PAGED_CHES")]] <-
     eurocomm_data
   )
 
-# Gather ideological placement of governments per year_in (create continuous time-scale!), Also the below won't work because we need the governing party name for some countries
-full_join(list_data$data[[10]], list_data$data[[11]], by = c("country_name", "year_in", "party_id_ches")) %>% select(country_name, year_in, lrgen_ches, lrecon_ches, lrgen_mp) %>% distinct() %>% arrange(country_name, year_in) %>% group_by(country_name, year_in) %>% summarise(mean_1 = mean(lrgen_mp, na.rm = T), mean_2 = mean(lrgen_ches, na.rm = T), mean_3 = mean(lrecon_ches, na.rm = T))
-# Calculate number of elections per year (create GC variable)
-full_join(list_data$data[[10]], list_data$data[[11]], by = c("country_name", "elecdate")) %>% select(country_name, elecdate) %>% distinct() %>% group_by(elecdate) %>% count()
+# Gather ideological placement of governments per year
 
-# Create master dataset!
 
-# Assumptions: 3yr running average, 1 left-right ratings for every 4 years from 2000 (grouping)
-
-country_test <- 
+# Design function to create continuous time scale for each country
+countries_ches <- 
   list_data$data[[which(list_data$source == "PAGED_CHES")]] %>% 
-  distinct(country_name) %>% pull()
-
-test_function <- function(index) {
-  index <- 
-    which(list_data$data[[which(list_data$source == "PAGED_CHES")]]$country_name == country_test[[index]])
-  table_store <-
-    list_data$data[[which(list_data$source == "PAGED_CHES")]] %>% 
-    slice(index) %>% 
-    mutate(year = year_in) %>% 
-    full_join(tibble(year = min(.$year):2025)) %>% 
-    arrange(year) %>% 
-    fill(country_name, .direction = "down")
-}
-
-table_test <- 
-  map(seq_along(country_test), test_function)
-
-test_01 <- 
-  map_dfr(table_test, bind_rows)
-
-country_test_02 <- 
+  distinct(country_name) %>% 
+  pull()
+countries_mp <- 
   list_data$data[[which(list_data$source == "PARLGOV_MP")]] %>% 
-  distinct(country_name) %>% pull()
+  distinct(country_name) %>% 
+  pull()
 
-test_function_02 <- function(index) {
+create_continuous_time_scale <- function(country_names, dataset_name) {
+  countries <- 
+    list_data$data[[which(list_data$source == dataset_name)]] %>% 
+    distinct(country_name) %>% 
+    pull()
+  
   index <- 
-    which(list_data$data[[which(list_data$source == "PARLGOV_MP")]]$country_name == country_test_02[[index]])
+    which(list_data$data[[which(list_data$source == dataset_name)]]$country_name == countries[[country_names]])
+  
   table_store <-
-    list_data$data[[which(list_data$source == "PARLGOV_MP")]] %>% 
+    list_data$data[[which(list_data$source == dataset_name)]] %>% 
     slice(index) %>% 
     mutate(year = year_in) %>% 
     full_join(tibble(year = min(.$year):2025)) %>% 
@@ -756,49 +740,73 @@ test_function_02 <- function(index) {
     fill(country_name, .direction = "down")
 }
 
-table_test_02 <- 
-  map(seq_along(country_test_02), test_function_02)
+# Create continuous time scale for each country in the Paged_Ches data
+table_paged_ches <- 
+  map(seq_along(countries_ches), create_continuous_time_scale, dataset_name = "PAGED_CHES") %>% 
+# Join the list of countries back into one table
+  map_dfr(., bind_rows)
 
-test_02 <-
-  map_dfr(table_test_02, bind_rows)
+# Create continuous time scale for each country in the Parlgov_Mp data
+table_parlgov_mp <- 
+  map(seq_along(countries_mp), create_continuous_time_scale, dataset_name = "PARLGOV_MP") %>% 
+# Join the list of countries back into one table
+  map_dfr(., bind_rows)
 
-# two cases of many to many relationship: Norway (two governments started in 1945) and Croatia (two governments started in 2017), solution: group by year and summarize mean of political ideology
-test_03 <- 
-  full_join(
-    test_01, 
-    test_02 %>% 
-      select(
-        country_name, 
-        year, 
-        year_in,
-        year_out,
-        elecdate,
-        party_name, 
-        lrgen_mp, 
-        party_id_ches, 
-        party_id_mp, 
-        party_id_parlgov), 
-    by = c("country_name", "year", "party_id_ches"), 
-    relationship = "many-to-many") %>% 
-  mutate(
-    year_in = ifelse(is.na(year_in.x), year_in.y, year_in.x), 
-    year_out = ifelse(is.na(year_out.x), year_out.y, year_out.x),
-    elecdate = ifelse(is.na(elecdate.x), elecdate.y, elecdate.x)
-    ) %>% 
-  group_by(country_name, year) %>% 
-  mutate(across(contains("_id_"), ~ as.character(.))) %>% 
-  summarise(
-    across(where(is.numeric), ~ mean(., na.rm = TRUE)), 
-    across(where(is.character), ~ str_c(unique(.), collapse = ", "))) %>% 
-  fill(party_name, party_name_short, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_")) %>% 
-  ungroup() %>% 
-  mutate(across(everything(), ~ ifelse(is.nan(.), NA, .))) %>% 
-  select(country_name, year, elecdate, party_name, party_name_short, year_in, year_out, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_"),
-         -year_in.x, -year_out.x, -year_in.y, -year_out.y) %>% 
+# Join the new tables with the rest of the data sets
+list_data <-
+  list_data %>% 
+  add_row(
+    source = "POLITICAL_FACTORS",
+    data = list(
+      full_join(
+        table_paged_ches, 
+        table_parlgov_mp %>% 
+          select(
+            country_name, 
+            year, 
+            year_in,
+            year_out,
+            elecdate,
+            party_name, 
+            lrgen_mp, 
+            party_id_ches, 
+            party_id_mp, 
+            party_id_parlgov), 
+        by = c("country_name", "year", "party_id_ches"), 
+        relationship = "many-to-many") %>% 
+        mutate(
+          year_in = ifelse(is.na(year_in.x), year_in.y, year_in.x), 
+          year_out = ifelse(is.na(year_out.x), year_out.y, year_out.x),
+          elecdate = ifelse(is.na(elecdate.x), elecdate.y, elecdate.x)
+        ) %>% 
+# Group by year and summarize mean of political ideology to create constant continuous scale
+# Context: Individual years can have multiple governments with different parties and ideologies, and governments can have multiple parties in government. Example: Switzerland has a federal government.
+        group_by(country_name, year) %>% 
+        mutate(across(contains("_id_"), ~ as.character(.))) %>% 
+        summarise(
+          across(where(is.numeric), ~ mean(., na.rm = TRUE)), 
+          across(where(is.character), ~ str_c(unique(.), collapse = ", "))) %>% 
+        fill(party_name, party_name_short, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_")) %>% 
+        ungroup() %>% 
+        mutate(across(everything(), ~ ifelse(is.nan(.), NA, .))) %>% 
+        select(country_name, year, elecdate, party_name, party_name_short, year_in, year_out, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_"),
+               -year_in.x, -year_out.x, -year_in.y, -year_out.y) %>% 
 # Consolidation of Swiss data
-  mutate(
-    year_in = replace(year_in, is.na(year_in) & year == 2023, 2023), 
-    elecdate = replace(elecdate, is.na(elecdate) & year == 2023, 2023)) 
+        mutate(
+          year_in = replace(year_in, is.na(year_in) & year == 2023, 2023), 
+          elecdate = replace(elecdate, is.na(elecdate) & year == 2023, 2023)
+        ) %>% 
+# Removing unnecessary text from some date values
+        mutate(
+          elecdate = str_sub(elecdate, start = 1, end = 4) %>% as.numeric(), 
+          year_out = str_sub(year_out, start = 1,4) %>% as.numeric()
+        )
+    )
+  )
+
+# Calculate number of elections per year from Donor Countries
+
+  
 
 
 
