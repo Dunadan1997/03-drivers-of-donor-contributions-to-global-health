@@ -7,10 +7,8 @@
 
 # Load packages
 library(tidyverse)
-library(googlesheets4)
 library(slider)
 library(stringi)
-
 
 # Path to Data Warehouse
 path_to_data_warehouse <- 
@@ -67,7 +65,8 @@ list_data$data[[which(list_data$source == "OECD")]] <-
   mutate(
     oda_running_avg = slide_mean(
       oda_spent, before = 1, after = 1, complete = FALSE, na_rm = TRUE
-      )
+      ),
+    donor_name = ifelse(donor_name == "EU Institutions", "European Commission", donor_name)
     ) %>% 
   ungroup()
 
@@ -158,7 +157,8 @@ list_data$data[[which(list_data$source == "TGF")]] <-
                                               )
                                        )
                                 )
-                         )
+                         ),
+    donor_name = ifelse(donor_name == "Korea (Republic)", "South Korea", donor_name)
     )
 
 # Select relevant variables from IMF data
@@ -204,7 +204,8 @@ list_data$data[[which(list_data$source == "IMF")]] <-
       expdtr_prctgdp:prmryadjfsclblc_prctgdp, 
       ~ slide_mean(.x, before = 2, na_rm = TRUE),
       .names = "{.col}_rllavg" 
-      )
+      ),
+    year = as.numeric(year)
     ) %>% 
 # Rename rolling average columns
   rename_with(~ str_replace_all(.x, "_prctgdp_", "_")) %>% 
@@ -752,7 +753,7 @@ table_parlgov_mp <-
 # Join the list of countries back into one table
   map_dfr(., bind_rows)
 
-# Join the new tables with the rest of the data sets
+# Join the new tables with the rest of the data
 list_data <-
   list_data %>% 
   add_row(
@@ -767,17 +768,20 @@ list_data <-
             year_in,
             year_out,
             elecdate,
-            party_name, 
+            party_name,
+            party_name_short,
             lrgen_mp, 
             party_id_ches, 
             party_id_mp, 
             party_id_parlgov), 
         by = c("country_name", "year", "party_id_ches"), 
-        relationship = "many-to-many") %>% 
+        relationship = "many-to-many") %>%
+# Complete data from both tables
         mutate(
           year_in = ifelse(is.na(year_in.x), year_in.y, year_in.x), 
           year_out = ifelse(is.na(year_out.x), year_out.y, year_out.x),
-          elecdate = ifelse(is.na(elecdate.x), elecdate.y, elecdate.x)
+          elecdate = ifelse(is.na(elecdate.x), elecdate.y, elecdate.x),
+          party_name_short = ifelse(is.na(party_name_short.x), party_name_short.y, party_name_short.x)
         ) %>% 
 # Group by year and summarize mean of political ideology to create constant continuous scale
 # Context: Individual years can have multiple governments with different parties and ideologies, and governments can have multiple parties in government. Example: Switzerland has a federal government.
@@ -793,8 +797,8 @@ list_data <-
                -year_in.x, -year_out.x, -year_in.y, -year_out.y) %>% 
 # Consolidation of Swiss data
         mutate(
-          year_in = replace(year_in, is.na(year_in) & year == 2023, 2023), 
-          elecdate = replace(elecdate, is.na(elecdate) & year == 2023, 2023)
+          year_in = replace(year_in, country_name == "Swtizerland" & year == 2023, 2023), 
+          elecdate = replace(elecdate, country_name == "Swtizerland" & year == 2023, 2023)
         ) %>% 
 # Removing unnecessary text from some date values
         mutate(
@@ -805,9 +809,67 @@ list_data <-
   )
 
 # Calculate number of elections per year from Donor Countries
+n_elections <-
+  list_data %>% 
+  filter(source == "POLITICAL_FACTORS") %>% 
+  pluck(2, 1) %>% select(country_name, elecdate) %>% 
+  filter(!is.na(elecdate)) %>% 
+  group_by(country_name) %>% 
+  distinct() %>% 
+  mutate(
+    check = country_name %in% pull(list_data$data[[which(list_data$source == "TGF")]], donor_name)
+    ) %>% 
+  filter(check == "TRUE") %>% 
+  group_by(elecdate) %>% 
+  summarise(
+    n_elections = n()
+    ) %>% 
+  arrange(elecdate) %>% 
+  mutate(
+    n_elections_rollavg = slide_sum(n_elections, before = 1, after = 1)
+    )
 
-  
-
+# Join all data with the TGF table  
+list_data <-
+  list_data %>% 
+  add_row(
+    source = "FULL_FACTORS",
+    data = list(
+      list_data %>% 
+        filter(source == "TGF") %>% 
+        pluck(2, 1) %>% 
+        left_join(
+          list_data %>% 
+            filter(source == "POLITICAL_FACTORS") %>% 
+            pluck(2,1) %>% 
+            rename(donor_name = country_name), 
+          by = c("donor_name", "year")
+          ) %>% 
+        left_join(
+          list_data %>% 
+            filter(source == "IMF") %>%
+            pluck(2,1), 
+          by = c("donor_name", "year")
+          ) %>% 
+        left_join(
+          list_data %>% 
+            filter(source == "OECD") %>% 
+            pluck(2,1), 
+          by = c("donor_name", "year")
+          ) %>% 
+        left_join(
+          list_data %>% 
+            filter(source == "CGD") %>%
+            pluck(2,1), 
+          by = c("donor_name", "grant_cycle")
+          ) %>% 
+        left_join(
+          n_elections %>% 
+            rename(year = elecdate),
+          by = "year"
+        )
+      )
+    )
 
 
 
