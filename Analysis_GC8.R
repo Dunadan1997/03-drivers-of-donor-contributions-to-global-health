@@ -30,6 +30,9 @@ load_data <- function(url_link_index) {
     read_csv(urls_table$url[[url_link_index]])
   }
 
+
+# Data Wrangling ----------------------------------------------------------
+
 # Load all data
 list_data <- tibble(
   source = urls_table$source,
