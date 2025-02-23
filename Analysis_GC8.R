@@ -161,16 +161,16 @@ list_data$data[[which(list_data$source == "TGF")]] <-
     donor_name = ifelse(donor_name == "Korea (Republic)", "South Korea", donor_name)
     )
 
-# Select relevant variables from IMF data
+# Select relevant variables from IMF fiscal data
 IMF_colnames <- 
   list_data %>% 
-  filter(source == "IMF") %>% 
+  filter(source == "IMF1") %>% 
   pluck(2,1) %>% 
   colnames()
 
-list_data$data[[which(list_data$source == "IMF")]] <-
+list_data$data[[which(list_data$source == "IMF1")]] <-
   list_data %>% 
-  filter(source == "IMF") %>% 
+  filter(source == "IMF1") %>% 
   pluck(2,1) %>% 
   select(
     donor_name = COUNTRY.Name, 
@@ -210,6 +210,59 @@ list_data$data[[which(list_data$source == "IMF")]] <-
 # Rename rolling average columns
   rename_with(~ str_replace_all(.x, "_prctgdp_", "_")) %>% 
   ungroup()
+
+# Select relevant variables from IMF economic outlook data
+list_data$data[[which(list_data$source == "IMF2")]] <-
+  list_data %>% 
+  filter(source == "IMF2") %>% 
+  pluck(2,1) %>% 
+  filter(`Subject Descriptor` %in% c(
+    "Gross domestic product per capita, constant prices", 
+    "Gross domestic product, constant prices",
+    "Inflation, end of period consumer prices",
+    "Unemployment rate",
+    "Total investment",
+    "Volume of exports of goods and services",
+    "Volume of imports of goods and services"
+    ),
+  Units %in% c(
+    "Percent change",
+    "Purchasing power parity; 2021 international dollar",
+    "Percent of GDP",
+    "Inedx",
+    "Percent of total labor force"
+    )
+  ) %>% 
+  select(-Scale, -Units, -`Country/Series-specific Notes`, -`Estimates Start After`) %>% 
+# Transform table into a long format by turning years into rows
+  pivot_longer(
+    str_extract(colnames(.), "^\\d\\d\\d\\d") %>% 
+      discard(is.na), 
+    names_to = "year",
+    names_transform = list(year = as.numeric),
+    values_to = "obs_values") %>% 
+# Transform missing values to NA
+  mutate(
+    obs_values = case_when(
+      obs_values %in% c("n/a", "--") ~ NA, 
+      TRUE ~ obs_values
+    ),
+    obs_values = as.numeric(obs_values)
+  ) %>% 
+# Transform table into a wide format by turning economic indicators into columns
+  pivot_wider(
+    names_from = "Subject Descriptor", 
+    values_from = "obs_values") %>%
+# Clean and rename column names
+  rename_with(~ str_replace_all(.x, " \\(|, | |/|-|\\) ", "_"), everything()) %>% 
+  rename(donor_name = Country) %>% 
+# Create rolling average of economic outlook indicators
+  group_by(donor_name) %>% 
+  mutate(across(
+    Gross_domestic_product_constant_prices:Unemployment_rate, 
+    ~ slide_mean(.x, before = 2, na_rm = TRUE),
+    .names = "{.col}_rllavg" 
+  ))
 
 # Select relevant variables from PAGED data
 list_data$data[[which(list_data$source == "PAGED")]] <- 
@@ -847,10 +900,16 @@ list_data <-
           ) %>% 
         left_join(
           list_data %>% 
-            filter(source == "IMF") %>%
+            filter(source == "IMF1") %>%
             pluck(2,1), 
           by = c("donor_name", "year")
           ) %>% 
+        left_join(
+          list_data %>% 
+            filter(source == "IMF2") %>%
+            pluck(2,1), 
+          by = c("donor_name", "year")
+        ) %>%
         left_join(
           list_data %>% 
             filter(source == "OECD") %>% 
@@ -870,6 +929,14 @@ list_data <-
         )
       )
     )
+
+
+
+
+
+
+
+
 
 
 
