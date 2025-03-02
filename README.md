@@ -8,14 +8,8 @@ This research aims to identify and assess the influence of political and economi
 **How have political and economic factors influenced the financial contributions of public donors to the replenishment of The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) from 2001 to 2022?**
 
 ## Hypotheses
-1. If the financial contributions from government donors to other global health organizations, such as GAVI, decline, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because TGF tends to align its funding expectations with global trends in public health financing.
+1. If the financial contributions from government donors to other global health organizations, such as GAVI, and multilateral development banks, like the IDA, decline, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because TGF tends to align its funding expectations with global trends in public health financing.
 2. If the fiscal outlook of government donors, measured *inter lia* by rising public debt and deteriorating fiscal balances, worsens, then the financial contributions from government donors to The Global Fund (TGF) will decrease, because weaker fiscal health limits governments' ability to make discretionary international contributions.
-3. If the macroeconomic outlook of government donors, measured *inter lia* by GDP growth and unemployment, worsens, then the financial contributions froms government donors to The Global Fund (TGF) will decrease, because weaker economic growth limits govertnments' ability to make discretionary international contributions.
+3. If the macroeconomic outlook of government donors, measured *inter lia* by GDP growth and unemployment, worsens, then the financial contributions from government donors to The Global Fund (TGF) will decrease, because weaker economic growth limits govertnments' ability to make discretionary international contributions.
 4. If the ideological placement of government donors, measured by their political and / or economic orientation, leans to the right, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because right-wing governments tend to prioritize fiscal discipline and are less ideologically aligned with humanitarian spending.
-5. If , then , because .
-6. If , then , because .
-7. If , then , because .
-8. If , then , because .
-9. If , then , because .
-10. If , then , because .
-11. If , then , because .
+5. If the Official Development Assistance (ODA) disbursements of government donors decline, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because TGF's funding is indirectly influenced by overall humanitarian aid trends.
