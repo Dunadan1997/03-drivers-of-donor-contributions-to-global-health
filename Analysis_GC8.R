@@ -934,4 +934,16 @@ list_data <-
     )
 
 
+# Data Analysis -----------------------------------------------------------
+
+# Hypothesis 1
+list_data %>% filter(source == "FULL_FACTORS") %>% pluck(2,1) %>% filter(donor_type == "public") %>% select(donor_name, pledge_USD, GAVI, ADF, IFAD, IDA, GCF, PF, LDF, GEF, GPE, AfDf, CEPI) %>% pivot_longer(cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "PF", "LDF", "GEF", "GPE", "AfDf", "CEPI"), names_to = "orgs", values_to = "pledge_orgs") %>% filter(pledge_orgs > 0) %>% ggplot(aes(log(pledge_orgs), log(pledge_USD))) + geom_point() + geom_smooth(method = "lm", se = F) + facet_wrap(~ orgs)
+
+# Hypothesis 2
+list_data %>% filter(source == "FULL_FACTORS") %>% pluck(2,1) %>% filter(donor_type == "public") %>% ggplot(aes(log(oda_spent), log(pledge_USD))) + geom_point() + geom_smooth(method = "lm")
+
+
+
+
+
 
