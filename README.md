@@ -15,4 +15,9 @@ This research aims to identify and assess the influence of political and economi
 5. If the ideological placement of government donors, measured by their political and / or economic orientation, leans to the right, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because right-wing governments tend to prioritize fiscal discipline and are less ideologically aligned with humanitarian spending.
 
 ## Hypotheses Testing
+
+
+## Sources
+
+
 Ongoing.
