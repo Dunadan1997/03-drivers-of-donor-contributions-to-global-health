@@ -206,7 +206,7 @@ list_data$data[[which(list_data$source == "IMF1")]] <-
     across(
       expdtr_prctgdp:prmryadjfsclblc_prctgdp, 
       ~ slide_mean(.x, before = 2, na_rm = TRUE),
-      .names = "{.col}_rllavg" 
+      .names = "{.col}_rllavg01" 
       ),
     year = as.numeric(year)
     ) %>% 
@@ -264,7 +264,7 @@ list_data$data[[which(list_data$source == "IMF2")]] <-
   mutate(across(
     Gross_domestic_product_constant_prices:Unemployment_rate, 
     ~ slide_mean(.x, before = 2, na_rm = TRUE),
-    .names = "{.col}_rllavg" 
+    .names = "{.col}_rllavg02" 
   ))
 
 # Select relevant variables from PAGED data
@@ -937,10 +937,50 @@ list_data <-
 # Data Analysis -----------------------------------------------------------
 
 # Hypothesis 1
-list_data %>% filter(source == "FULL_FACTORS") %>% pluck(2,1) %>% filter(donor_type == "public") %>% select(donor_name, pledge_USD, GAVI, ADF, IFAD, IDA, GCF, PF, LDF, GEF, GPE, AfDf, CEPI) %>% pivot_longer(cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "PF", "LDF", "GEF", "GPE", "AfDf", "CEPI"), names_to = "orgs", values_to = "pledge_orgs") %>% filter(pledge_orgs > 0) %>% ggplot(aes(log(pledge_orgs), log(pledge_USD))) + geom_point() + geom_smooth(method = "lm", se = F) + facet_wrap(~ orgs)
+list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>%
+  filter(donor_type == "public") %>% 
+  select(donor_name, pledge_USD, GAVI, ADF, IFAD, IDA, GCF, PF, LDF, GEF, GPE, AfDf, CEPI) %>% 
+  pivot_longer(
+    cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "PF", "LDF", "GEF", "GPE", "AfDf", "CEPI"), 
+    names_to = "orgs", values_to = "pledge_orgs"
+    ) %>% 
+  filter(pledge_orgs > 0) %>% 
+  ggplot(aes(log(pledge_orgs), log(pledge_USD))) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = F) + 
+  facet_wrap(~ orgs)
 
 # Hypothesis 2
-list_data %>% filter(source == "FULL_FACTORS") %>% pluck(2,1) %>% filter(donor_type == "public") %>% ggplot(aes(log(oda_spent), log(pledge_USD))) + geom_point() + geom_smooth(method = "lm")
+list_data %>% 
+  filter(source == "FULL_FACTORS") %>%
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  ggplot(aes(log(oda_spent), log(pledge_USD))) + 
+  geom_point() + 
+  geom_smooth(method = "lm")
+
+# Hypothesis 3
+list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  select(donor_name, pledge_USD, ends_with("rllavg01")) %>% 
+  pivot_longer(
+    cols = c("expdtr_rllavg01", "revn_rllavg01", "prmryfsclblc_rllavg01", 
+             "fsclblc_rllavg01", "adjfsclblc_rllavg01", "grsdbt_rllavg01", 
+             "ntdbt_rllavg01", "prmryadjfsclblc_rllavg01"), 
+    names_to = "fiscal_indicators", values_to = "obs_value") %>% 
+  ggplot(aes(obs_value, log(pledge_USD))) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = F) + 
+  facet_wrap(~ fiscal_indicators)
+
+# Hypothesis 4
+
+
+# Hypothesis 5
+
 
 
 
