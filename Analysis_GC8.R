@@ -933,10 +933,81 @@ list_data <-
       )
     )
 
+# Create grouping variables
+
+list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  mutate(
+    continent = case_when(
+      donor_name %in% c("United States") ~ "United States",
+      donor_name %in% c("United States", "Canada", "Mexico", "Barbados", "Brazil", "Paraguay") ~ "Americas (w/o US)",
+      donor_name %in% c("European Commission", "France", "Italy", "United Kingdom", "Germany", "Netherlands", 
+                        "Sweden", "Norway", "Denmark", "Spain", "Ireland", "Belgium", "Russia", "Switzerland", 
+                        "Luxembourg", "Portugal", "Austria", "Iceland", "Greece", "Liechtenstein", "Monaco", 
+                        "Andorra", "Poland", "Hungary", "Slovenia", "Finland", "Malta", "Ukraine", "Cyprus") ~ "Europe",
+      donor_name %in% c("Nigeria", "South Africa", "Uganda", "Zimbabwe", "Burkina Faso", "Zambia", "Kenya", 
+                        "Tunisia", "Namibia", "Côte d'Ivoire", "Malawi", "Benin", "Senegal", "Togo", "Congo", 
+                        "Eswatini", "Cameroon", "Rwanda", "Equatorial Guinea", "Burundi", "Central African Republic", 
+                        "Chad", "Madagascar", "Niger", "Mali", "Ghana", "Morocco", "Tanzania", "Guinea") ~ "Africa",
+      donor_name %in% c("Japan", "Saudi Arabia", "China", "Thailand", "South Korea", "Singapore", "India", 
+                        "Kuwait", "Qatar", "United Arab Emirates", "Azerbaijan", "Armenia", "Indonesia", "Australia", "New Zealand") ~ "Asia & Oceania",
+      TRUE ~ "Other"
+      ),
+      oecd_status = case_when(
+        donor_name %in% c("United States") ~ "United States",
+        donor_name %in% c("Canada", "Mexico", "United Kingdom", "Germany", "France", "Italy", 
+                          "Netherlands", "Sweden", "Norway", "Denmark", "Spain", "Ireland", "Belgium", "Switzerland", 
+                          "Luxembourg", "Portugal", "Austria", "Iceland", "Greece", "Poland", "Hungary", "Slovenia", 
+                          "Finland", "Malta", "Japan", "South Korea", "Australia", "New Zealand") ~ "OECD (w/o US)",
+        TRUE ~ "Non-OECD"
+      )
+    )
+
 
 # Data Analysis -----------------------------------------------------------
 
-# Hypothesis 1
+# Plot the share (%) of financial contributions by country from 2001 to 2023
+library(patchwork)
+p1 <- 
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
+  geom_bar(stat = "identity", position = "fill", show.legend = FALSE)
+# Plot the absolute financial contribution by country from 2001 to 2023
+p2 <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
+  geom_bar(stat = "identity")
+# Plot shows how reliant TGF is on funding from the United States and that this reliance has grown over time, reaching a peak with the Biden Administration
+p1 + p2
+
+# Plot the median financial country contribution from 2001 to 2023
+p3 <- 
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  ggplot(aes(as.factor(year), log(pledge_USD))) + 
+  geom_jitter() + 
+  geom_boxplot()
+# Plot the number of government donors per grant cycle
+p4 <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  group_by(year) %>% 
+  count() %>% 
+  ggplot(aes(as.factor(year), n)) + 
+  geom_bar(stat = "identity")
+# Plot shows that even as the number of donors has risen, the median contribution has fallen, meaning that it is not enough to expand the donor base, it is also important to keep the contribution of existing donors high
+p3 + p4
+
+# Test Hypothesis 1
 list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>%
@@ -952,7 +1023,7 @@ list_data %>%
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ orgs)
 
-# Hypothesis 2
+# Test Hypothesis 2
 list_data %>% 
   filter(source == "FULL_FACTORS") %>%
   pluck(2,1) %>% 
@@ -961,7 +1032,7 @@ list_data %>%
   geom_point() + 
   geom_smooth(method = "lm")
 
-# Hypothesis 3
+# Test Hypothesis 3
 list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>% filter(donor_type == "public") %>% 
@@ -976,10 +1047,10 @@ list_data %>%
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ fiscal_indicators)
 
-# Hypothesis 4
+# Test Hypothesis 4
 
 
-# Hypothesis 5
+# Test Hypothesis 5
 
 
 
