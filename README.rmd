@@ -1,11 +1,31 @@
-# Replenishment Outcome
-By Bruno Alves de Carvalho
+---
+title: "Replenishment Outcome"
+date: 2025-03-9
+author: "Bruno Alves de Carvalho"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+source("Analysis_GC8.R")
+```
 
 ## Summary
 This research aims to identify and assess the influence of political and economic factors on the financial contributions of public donors to the replenishment of The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) from 2001 to 2022. The study draws on publicly available data from reputable sources, including the International Monetary Fund (IMF), the Organisation for Economic Co-operation and Development (OECD), the Center for Global Development (CGD), the Chapel Hill Expert Survey (CHES), and others. It explores the relationship between the financial contributions of key government donors to TGF and their political and economic characteristics, such as political orientation, fiscal and economic outlook, official development assistance (ODA) disbursements, and contributions to other humanitarian organizations. The primary donors analyzed include the United States, Western European countries, and other OECD members, which collectively represent the vast majority of TGF contributions since 2001. This study aims to provide a predictive framework for estimating future replenishment outcomes based on prevailing political and economic conditions, offering TGF a valuable tool to support planning for its eighth grant cycle.
 
 ## Research Question
 **How have political and economic factors influenced the financial contributions of public donors to the replenishment of The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) from 2001 to 2022?**
+
+## Introduction
+This plot shows how reliant TGF is on funding from the United States and that this reliance has grown over time, reaching a peak with the Biden Administration.
+```{r plot 1, test}
+p1+p2
+```
+
+This plot shows that even as the number of donors has risen, the median contribution has fallen, meaning that it is not enough to expand the donor base, it is also important to keep the contribution of existing donors high
+```{r plot 2, test}
+p3+p4
+```
 
 ## Hypotheses
 1. If the financial contributions from government donors to other global health organizations, such as GAVI, and multilateral development banks, like the IDA, decline, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because TGF tends to align its funding expectations with global trends in public health financing.
@@ -15,7 +35,7 @@ This research aims to identify and assess the influence of political and economi
 5. If the ideological placement of government donors, measured by their political and / or economic orientation, leans to the right, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because right-wing governments tend to prioritize fiscal discipline and are less ideologically aligned with humanitarian spending.
 
 ## Hypotheses Testing
-Ongoing.
+
 
 ## Sources
 

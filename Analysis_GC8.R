@@ -9,6 +9,7 @@
 library(tidyverse)
 library(slider)
 library(stringi)
+library(patchwork)
 
 # Path to Data Warehouse
 path_to_data_warehouse <- 
@@ -969,7 +970,6 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
 # Data Analysis -----------------------------------------------------------
 
 # Plot the share (%) of financial contributions by country from 2001 to 2023
-library(patchwork)
 p1 <- 
   list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
@@ -983,8 +983,6 @@ p2 <-
   pluck(2,1) %>% filter(donor_type == "public") %>% 
   ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
   geom_bar(stat = "identity")
-# Plot shows how reliant TGF is on funding from the United States and that this reliance has grown over time, reaching a peak with the Biden Administration
-p1 + p2
 
 # Plot the median financial country contribution from 2001 to 2023
 p3 <- 
@@ -1004,8 +1002,6 @@ p4 <-
   count() %>% 
   ggplot(aes(as.factor(year), n)) + 
   geom_bar(stat = "identity")
-# Plot shows that even as the number of donors has risen, the median contribution has fallen, meaning that it is not enough to expand the donor base, it is also important to keep the contribution of existing donors high
-p3 + p4
 
 # Test Hypothesis 1
 list_data %>% 
