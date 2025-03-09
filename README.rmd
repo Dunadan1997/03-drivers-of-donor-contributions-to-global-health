@@ -2,7 +2,7 @@
 title: "Replenishment Outcome"
 date: 2025-03-9
 author: "Bruno Alves de Carvalho"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
