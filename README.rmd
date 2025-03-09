@@ -6,7 +6,6 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
 source("Analysis_GC8.R")
 ```
 
@@ -14,10 +13,18 @@ source("Analysis_GC8.R")
 This research aims to identify and assess the influence of political and economic factors on the financial contributions of public donors to the replenishment of The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) from 2001 to 2022. The study draws on publicly available data from reputable sources, including the International Monetary Fund (IMF), the Organisation for Economic Co-operation and Development (OECD), the Center for Global Development (CGD), the Chapel Hill Expert Survey (CHES), and others. It explores the relationship between the financial contributions of key government donors to TGF and their political and economic characteristics, such as political orientation, fiscal and economic outlook, official development assistance (ODA) disbursements, and contributions to other humanitarian organizations. The primary donors analyzed include the United States, Western European countries, and other OECD members, which collectively represent the vast majority of TGF contributions since 2001. This study aims to provide a predictive framework for estimating future replenishment outcomes based on prevailing political and economic conditions, offering TGF a valuable tool to support planning for its eighth grant cycle.
 
 ## Research Question
-**How have political and economic factors influenced the financial contributions of public donors to the replenishment of The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) from 2001 to 2022?**
+How have political and economic factors influenced the financial contributions of public donors to the replenishment of The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) from 2001 to 2022?
 
 ## Introduction
-This plot shows how reliant TGF is on funding from the United States and that this reliance has grown over time, reaching a peak with the Biden Administration.
+The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) is an international financing organization established in 2002 to combat three of the world’s deadliest epidemics. It operates as a financing mechanism rather than an implementing agency, mobilizing funds from public and private donors and awarding grants to organizations working in low- and middle-income countries. These grants support country-led health programs, developed in collaboration with a broad range of stakeholders, including governments, civil society, affected communities, the private sector, and global health experts.
+
+The Global Fund's partnership model — relying on external organizations to implement its grants — is both a strength and a vulnerability. On one hand, it allows TGF to leverage the expertise and capacity of its partners. On the other, it makes grant implementation dependent on the financial health of these partners. The abrupt axing of the United States Agency for International Development (USAID) by the Trump administration has created financial uncertainty in the humanitarian sector, threatening TGF’s grant execution. Additionally, the current Administration's commitment to global health remains uncertain, adding to concerns about funding sustainability.
+
+To sustain its efforts to end HIV/AIDS, Tuberculosis, and Malaria (HTM), TGF conducts a replenishment round every three years, securing pledges from public and private donors. Since its inception, it has disbursed $65 billion, becoming the world’s largest multilateral provider of grants to strengthen health systems (IC, 2025, p.10). TGF’s financing has contributed to a 63% reduction in combined death rates from HTM, saving 65 million lives (IC, 2025, p.6).
+
+The eighth replenishment round is currently underway, culminating in a high-stakes replenishment conference in November 2025, where donors will confirm their financial commitments. However, in an moment of political and economic uncertainty, with aid budgets shrinking and global health funding de-prioritized, international assistance is facing an overhaul. In this radical landscape, it may be instructive to assess the key factors that have influenced past TGF replenishment outcomes in an attempt to develop a predictive framework for estimating future funding trends, thereby providing The Global Fund with a data-driven tool to navigate a volatile funding environment.
+
+Looking back, like most international aid organizations, TGF is heavily reliant on funding from the United States and increasingly so, reaching a peak with the Biden Administration in 2022.
 ```{r plot 1, test}
 p1+p2
 ```
