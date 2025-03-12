@@ -969,39 +969,23 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
 
 # Data Analysis -----------------------------------------------------------
 
-# Plot the share (%) of financial contributions by country from 2001 to 2023
-p1 <- 
-  list_data %>% 
-  filter(source == "FULL_FACTORS") %>% 
-  pluck(2,1) %>% filter(donor_type == "public") %>% 
-  ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
-  geom_bar(stat = "identity", position = "fill", show.legend = FALSE)
-# Plot the absolute financial contribution by country from 2001 to 2023
-p2 <-
-  list_data %>% 
-  filter(source == "FULL_FACTORS") %>% 
-  pluck(2,1) %>% filter(donor_type == "public") %>% 
-  ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
-  geom_bar(stat = "identity")
+# Set up visuals
+blue <- "#2E4DF9"
 
-# Plot the median financial country contribution from 2001 to 2023
-p3 <- 
-  list_data %>% 
-  filter(source == "FULL_FACTORS") %>% 
-  pluck(2,1) %>% filter(donor_type == "public") %>% 
-  ggplot(aes(as.factor(year), log(pledge_USD))) + 
-  geom_jitter() + 
-  geom_boxplot()
-# Plot the number of government donors per grant cycle
-p4 <-
-  list_data %>% 
-  filter(source == "FULL_FACTORS") %>% 
-  pluck(2,1) %>% 
-  filter(donor_type == "public") %>% 
-  group_by(year) %>% 
-  count() %>% 
-  ggplot(aes(as.factor(year), n)) + 
-  geom_bar(stat = "identity")
+source_TGF <- "Source: The Global Fund (TGF), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
+
+plot_frame <- 
+  theme_minimal() + 
+  theme(
+    plot.title = element_text(face = "bold"), 
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0)),
+    panel.grid.major.x = element_line(linewidth = 0.25),
+    panel.grid.minor.x = element_blank(),
+    panel.grid.major.y = element_line(linewidth = 0.25), 
+    text = element_text(size = 12.5)
+  ) 
 
 # Test Hypothesis 1
 list_data %>% 

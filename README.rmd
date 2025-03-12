@@ -6,6 +6,10 @@ output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
+# Set up r-markdown
+knitr::opts_chunk$set(echo = FALSE)
+
+# Load clean data
 source("Analysis_GC8.R")
 ```
 
@@ -20,21 +24,115 @@ The Global Fund to Fight AIDS, Tuberculosis, and Malaria (TGF) is an internation
 
 The Global Fund's reliance on external organizations to implement its grants, known as its partnership model, is both a strength and a vulnerability. On one hand, it allows TGF to leverage the expertise and capacity of its partners. On the other, it makes grant implementation dependent on the viability of these partners. For example, the abrupt axing of the United States Agency for International Development (USAID) by the Trump administration has created financial uncertainty in the humanitarian sector, threatening the execution of TGF grants. Additionally, the current Administration's commitment to global health remains uncertain, adding to concerns about funding sustainability.
 
-To sustain its efforts to end HIV/AIDS, Tuberculosis, and Malaria (HTM), TGF conducts a periodic replenishment, securing new pledges from public and private donors and investing money in three-year grant cycles. Since its inception, it has disbursed $US65 billion, becoming the world’s largest multilateral provider of grants to strengthen health systems (IC, 2025, p.10-11). TGF’s financing has contributed to a 63% reduction in combined death rates from HTM, saving 65 million lives (IC, 2025, p.6).
+To sustain its efforts to end HIV/AIDS, Tuberculosis, and Malaria (HTM), TGF conducts a periodic replenishment, securing new pledges from public and private donors and investing money in three-year grant cycles. Since its inception, it has disbursed $US65 billion, becoming the world’s largest multilateral provider of grants to strengthen health systems. TGF’s financing has contributed to a 63% reduction in combined death rates from HTM, saving 65 million lives[^1].
+
+[^1]: *Eighth Replenishment Investment Case*, 2025, pg.6-11
 
 The eighth replenishment is currently underway, culminating in a high-stakes replenishment conference in November 2025, where donors will confirm their financial commitments. The Global Fund is asking donors for US$18 billion for its eighth grant cycle, running from 2027 to 2029, allowing the Fund to sustain current levels of support to countries. However, in an moment of political and economic uncertainty, where shrinking aid budgets and the de-prioritization of global health funding are reshaping international assistance, the Fund's replenishment is facing stark prospects.
 
-In this radical landscape, making predictions may seem speculative. However, it is precisely in times of uncertainty that distinguishing what can be determined with reasonable confidence from what cannot becomes crucial. This research aims to identify key factors that have shaped past TGF replenishment outcomes to inform a predictive framework for estimating future funding trends. By doing so, it seeks to provide The Global Fund with a data-driven tool to navigate a volatile funding environment.
+In this radical landscape, making predictions may seem speculative. However, it is precisely in times of uncertainty that distinguishing what can be determined with reasonable confidence from what cannot becomes crucial. This research aims to identify key factors that have shaped past TGF replenishment outcomes to inform a predictive framework for estimating future funding trends[^2]. By doing so, it seeks to provide The Global Fund with a data-driven tool to navigate a volatile funding environment.
 
-Looking back, like most international aid organizations, TGF is heavily reliant on funding from the United States and increasingly so, reaching a peak with the Biden Administration in 2022.
-```{r plot 1, test}
-p1+p2
+[^2]: The study is focused on financial contributions from public donors because they contribute the vast majority of funding to The Global Fund (around 95%).
+
+Like many international organizations, The Global Fund relies heavily on the US as its largest donor, with a cumulative contribution of US\$27 billion since 2001. The next largest contributors are France, the United Kingdom (UK), Germany, and Japan, having each contributed over US\$5 billion. Historically, TGF's top ten donors have been exclusively high-income members of the Organisation for Economic Co-operation and Development (OECD). These rankings have remained broadly consistent across replenishment cycles, highlighting the Fund's reliance on a stable group of donors for the past two decades.
+
+```{r plot 1}
+# Plot the top 10 biggest donors since 2001 
+df_plot <- 
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  group_by(donor_name) %>% 
+  summarise(sum = sum(pledge_USD, na.rm = T)) %>% 
+  slice_max(sum, n = 10)
+
+df_plot %>% 
+  ggplot(
+    aes(sum, fct_reorder(donor_name, sum))
+    ) + 
+  geom_bar(
+    stat = "identity", 
+    fill = blue
+    ) +
+  labs(
+    title = "Figure 1: Top Ten Donors of The Global Fund", 
+    x = NULL, y = NULL, 
+    caption = source_TGF
+    ) + 
+  scale_x_continuous(
+    breaks = seq(0,30000, 5000), 
+    labels = scales::label_currency(suffix = "mil")
+    ) +
+  plot_frame
 ```
 
-This plot shows that even as the number of donors has risen, the median contribution has fallen, meaning that it is not enough to expand the donor base, it is also important to keep the contribution of existing donors high
-```{r plot 2, test}
-p3+p4
+OECD countries account for over 90% of public sector pledges to The Global Fund, with the United States' share increasing in recent years. In 2022, under the Biden Administration, US contributions spiked to 42% of total public sector pledges, reaching US$6 billion. Meanwhile, pledges from non-OECD countries have remained stable since 2001, with no significant increase from BRIC members such as China, Brazil, or India. This suggests that these countries are unlikely to offset expected funding cuts from the US, France, UK, and Germany, raising concerns about potential funding gaps. 
+
+```{r plot 2 & 3}
+# Plot the share (%) of financial contributions by country from 2001 to 2023
+p_relative_contributions <- 
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
+  geom_bar(stat = "identity", position = "fill", show.legend = FALSE)
+
+# Plot the absolute financial contribution by country from 2001 to 2023
+p_absolute_contributions <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
+  geom_bar(stat = "identity")
+
+# Combine both plots
+p_relative_contributions + p_absolute_contributions
 ```
+
+Despite its reliance on a small group of major donors, TGF has expanded its donor base since 2016, particularly engaging the private sector more effectively. The share of private sector pledges increased from 3% in 2001 to 8% in 2022, although it has remained stagnant since 2019. This growth reflects TGF's ability to leverage new technologies and private sector expertise to develop smarter solutions for combating HTM, attracting large donations from foundations like the Bill & Melinda Gates Foundation and (RED).
+
+Additionally, the number of public sector donors, which was stable at 30 since the adoption of the Replenishment model in 2005, rose significantly in 2016, nearly doubling by 2019, and reaching nearly 50 in 2022. Most new donors are low to middle-income countries, reflecting a positive shift toward greater self-reliance among recipient nations. However, despite this progress, the financial contributions from these new donors remain relatively small. As a result, they cannot be relied on as a hedge against a potential funding drop from the US and other European countries, especially since these countries' budgets would also be affected by a global reduction in international aid.
+
+Furthermore, the expansion of the donor base has coincided with a decline in the median financial contribution per country. This highlights that simply increasing the number of donors is not sufficient to boost overall funding levels. In parallel, it is essential to maintain individual country contributions high to sustain and enhance the level of support to recipient countries.
+
+```{r plot 4 & 5}
+# Plot the share of private sector donations
+p_private_relative_contributions <-
+  list_data %>% 
+    filter(source == "FULL_FACTORS") %>% 
+    pluck(2,1) %>% 
+    group_by(year) %>% 
+    mutate(prct = pledge_USD / sum(pledge_USD)) %>% 
+    filter(donor_type == "private") %>% 
+    ggplot(aes(as.factor(year), prct)) + 
+    geom_bar(stat = "identity")
+
+# Plot the number of government donors per grant cycle
+p_num_donors <-
+  list_data %>% 
+    filter(source == "FULL_FACTORS") %>% 
+    pluck(2,1) %>% 
+    filter(donor_type == "public") %>% 
+    group_by(year) %>% 
+    count() %>% 
+    ggplot(aes(as.factor(year), n)) + 
+    geom_bar(stat = "identity")
+
+# Combine both plots
+p_private_relative_contributions + p_num_donors 
+```
+
+```{r plot 6}
+# Plot the median financial country contribution from 2001 to 2023
+list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  ggplot(aes(as.factor(year), log(pledge_USD))) + 
+  geom_jitter() + 
+  geom_boxplot()
+```
+
 
 ## Hypotheses
 1. If the financial contributions from government donors to other global health organizations, such as GAVI, and multilateral development banks, like the IDA, decline, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because TGF tends to align its funding expectations with global trends in public health financing.
