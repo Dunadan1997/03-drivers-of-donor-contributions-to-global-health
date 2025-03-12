@@ -976,15 +976,14 @@ source_TGF <- "Source: The Global Fund (TGF), author's calculation\nAuthor: Brun
 
 plot_frame <- 
   theme_minimal() + 
-  theme(
-    plot.title = element_text(face = "bold"), 
+  theme( 
     plot.title.position = "plot",
     plot.caption.position = "plot",
     plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0)),
     panel.grid.major.x = element_line(linewidth = 0.25),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.y = element_line(linewidth = 0.25), 
-    text = element_text(size = 12.5)
+    text = element_text(size = 12.5, family = "serif")
   ) 
 
 # Test Hypothesis 1
