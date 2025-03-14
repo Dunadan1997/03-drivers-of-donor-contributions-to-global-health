@@ -34,9 +34,9 @@ In this radical landscape, making predictions may seem speculative. However, it 
 
 [^2]: The study is focused on financial contributions from public donors because they contribute the vast majority of funding to The Global Fund (around 95%).
 
-Like many international organizations, The Global Fund relies heavily on the US as its largest donor, with a cumulative contribution of US\$27 billion since 2001. The next largest contributors are France, the United Kingdom (UK), Germany, and Japan, having each contributed over US\$5 billion. Historically, TGF's top ten donors have been exclusively high-income members of the Organisation for Economic Co-operation and Development (OECD). These rankings have remained broadly consistent across replenishment cycles, highlighting the Fund's reliance on a stable group of donors for the past two decades.
+Like many international organizations, The Global Fund relies heavily on the US as its largest donor, with a cumulative contribution of US\$27 billion since 2001 (see Figure 1). The next largest contributors are France, the United Kingdom (UK), Germany, and Japan, having each contributed over US\$5 billion. Historically, TGF's top ten donors have been exclusively high-income members of the Organisation for Economic Co-operation and Development (OECD). These rankings have remained broadly consistent across replenishment cycles, highlighting the Fund's reliance on a stable group of donors for the past two decades.
 
-```{r plot 1}
+```{r plot 1, fig.width=7, fig.height=4.5}
 # Plot the top 10 biggest donors since 2001 
 df_plot <- 
   list_data %>% 
@@ -53,7 +53,7 @@ df_plot %>%
     ) + 
   geom_bar(
     stat = "identity", 
-    fill = blue
+    fill = grey
     ) +
   labs(
     title = "Figure 1: Top Ten Donors of The Global Fund", 
@@ -67,7 +67,7 @@ df_plot %>%
   plot_frame
 ```
 
-OECD countries account for over 90% of public sector pledges to The Global Fund, with the United States' share increasing in recent years. In 2022, under the Biden Administration, US contributions spiked to 42% of total public sector pledges, reaching US$6 billion. Meanwhile, pledges from non-OECD countries have remained stable since 2001, with no significant increase from BRIC members such as China, Brazil, or India. This suggests that these countries are unlikely to offset expected funding cuts from the US, France, UK, and Germany, raising concerns about potential funding gaps. 
+OECD countries account for over 90% of public sector pledges to The Global Fund, with the United States' share increasing in recent years (see Figure 2 & 3). In 2022, under the Biden Administration, US contributions spiked to 42% of total public sector pledges, reaching US$6 billion. Meanwhile, pledges from non-OECD countries have remained stable since 2001, with no significant increase from BRIC members such as China, Brazil, or India. This suggests that these countries are unlikely to offset expected funding cuts from the US, France, UK, and Germany, raising concerns about potential funding gaps. 
 
 ```{r plot 2 & 3}
 # Plot the share (%) of financial contributions by country from 2001 to 2023
@@ -76,7 +76,21 @@ p_relative_contributions <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>% filter(donor_type == "public") %>% 
   ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
-  geom_bar(stat = "identity", position = "fill", show.legend = FALSE)
+  geom_bar(stat = "identity", position = "fill") +
+  labs(
+    title = "Figure 2 & 3: Perentage and Dollar Share of Financial Contributions",
+    x = NULL, y = NULL,
+    caption = source_TGF
+    ) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  scale_fill_manual(values = c(red, yellow, blue)) +
+  plot_frame +
+  theme(legend.position = "top",
+        legend.title = element_blank()
+        ) +
+  guides(
+    fill= guide_legend(reverse = TRUE)
+    )
 
 # Plot the absolute financial contribution by country from 2001 to 2023
 p_absolute_contributions <-
@@ -84,55 +98,78 @@ p_absolute_contributions <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>% filter(donor_type == "public") %>% 
   ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
-  geom_bar(stat = "identity")
+  geom_bar(stat = "identity", show.legend = FALSE) +
+  labs(
+    x = NULL, y = NULL
+  ) +
+  scale_y_continuous(labels = scales::label_currency(suffix = "mil")) +
+  scale_fill_manual(values = c(red, yellow, blue)) +
+  plot_frame 
 
 # Combine both plots
 p_relative_contributions + p_absolute_contributions
 ```
 
-Despite its reliance on a small group of major donors, TGF has expanded its donor base since 2016, particularly engaging the private sector more effectively. The share of private sector pledges increased from 3% in 2001 to 8% in 2022, although it has remained stagnant since 2019. This growth reflects TGF's ability to leverage new technologies and private sector expertise to develop smarter solutions for combating HTM, attracting large donations from foundations like the Bill & Melinda Gates Foundation and (RED).
+Despite its reliance on a small group of major donors, TGF has expanded its donor base since 2016, particularly engaging the private sector more effectively. The share of private sector pledges increased from 3% in 2001 to 8% in 2022, although it has remained stagnant since 2019 (see Figure 4). This growth reflects TGF's ability to leverage new technologies and private sector expertise to develop smarter solutions for combating HTM, attracting large donations from foundations like the Bill & Melinda Gates Foundation and (RED).
 
-Additionally, the number of public sector donors, which was stable at 30 since the adoption of the Replenishment model in 2005, rose significantly in 2016, nearly doubling by 2019, and reaching nearly 50 in 2022. Most new donors are low to middle-income countries, reflecting a positive shift toward greater self-reliance among recipient nations. However, despite this progress, the financial contributions from these new donors remain relatively small. As a result, they cannot be relied on as a hedge against a potential funding drop from the US and other European countries, especially since these countries' budgets would also be affected by a global reduction in international aid.
+Additionally, the number of public sector donors was initially high and met with excitement when the Fund launched in 2001 but stabilized at 30 after the adoption of the Replenishment model in 2005 (see Figure 5). It began rising again in 2016, nearly doubled by 2019, and reached almost 50 in 2022. Most new donors are low to middle-income countries, reflecting a positive shift toward greater self-reliance among recipient nations. However, despite this progress, the financial contributions from these new donors remain relatively small. As a result, they cannot be relied on as a hedge against a potential funding drop from the US and other European countries, especially since these countries' budgets would also be affected by a global reduction in international aid.
 
-Furthermore, the expansion of the donor base has coincided with a decline in the median financial contribution per country. This highlights that simply increasing the number of donors is not sufficient to boost overall funding levels. In parallel, it is essential to maintain individual country contributions high to sustain and enhance the level of support to recipient countries.
+Furthermore, the expansion of the donor base has coincided with a decline in the median financial contribution per country (see Figure 6). This highlights that simply increasing the number of donors is not sufficient to boost overall funding levels. In parallel, it is essential to maintain individual country contributions high to sustain and enhance the level of support to recipient countries.
 
-```{r plot 4 & 5}
+```{r plot 4 & 5, fig.width=7, fig.height=4.5}
 # Plot the share of private sector donations
 p_private_relative_contributions <-
   list_data %>% 
-    filter(source == "FULL_FACTORS") %>% 
-    pluck(2,1) %>% 
-    group_by(year) %>% 
-    mutate(prct = pledge_USD / sum(pledge_USD)) %>% 
-    filter(donor_type == "private") %>% 
-    ggplot(aes(as.factor(year), prct)) + 
-    geom_bar(stat = "identity")
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  group_by(year) %>% 
+  mutate(prct = pledge_USD / sum(pledge_USD)) %>% 
+  filter(donor_type == "private") %>% 
+  ggplot(aes(as.factor(year), prct)) + 
+  geom_bar(stat = "identity", fill = grey) +
+  labs(
+    title = "Figure 4 & 5: Percentage of Private Sector Contributions (left) and Number of Public\nSector Donors (right)",
+    x = NULL, y = NULL,
+    caption = source_TGF
+    ) +
+  scale_y_continuous(labels = scales::percent_format()) +
+  plot_frame
 
 # Plot the number of government donors per grant cycle
 p_num_donors <-
   list_data %>% 
-    filter(source == "FULL_FACTORS") %>% 
-    pluck(2,1) %>% 
-    filter(donor_type == "public") %>% 
-    group_by(year) %>% 
-    count() %>% 
-    ggplot(aes(as.factor(year), n)) + 
-    geom_bar(stat = "identity")
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  group_by(year) %>% 
+  count() %>% 
+  ggplot(aes(as.factor(year), n)) + 
+  geom_bar(stat = "identity", fill = grey) +
+  labs(
+    x = NULL, y = NULL
+  ) +
+  scale_y_continuous(breaks = c(0, 30, 40, 50, 60)) +
+  plot_frame 
 
 # Combine both plots
 p_private_relative_contributions + p_num_donors 
 ```
 
-```{r plot 6}
+```{r plot 6, fig.width=7, fig.height=5}
 # Plot the median financial country contribution from 2001 to 2023
 list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>% filter(donor_type == "public") %>% 
   ggplot(aes(as.factor(year), log(pledge_USD))) + 
-  geom_jitter() + 
-  geom_boxplot()
+  geom_jitter(color = grey, alpha = 0.5) + 
+  geom_boxplot() +
+  labs(
+    title = "Figure 6: Median Contribution per Public Sector Donor (log-scale)",
+    x = NULL, y = NULL,
+    caption = source_TGF
+  ) +
+  plot_frame
 ```
-
 
 ## Hypotheses
 1. If the financial contributions from government donors to other global health organizations, such as GAVI, and multilateral development banks, like the IDA, decline, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because TGF tends to align its funding expectations with global trends in public health financing.
@@ -142,7 +179,8 @@ list_data %>%
 5. If the ideological placement of government donors, measured by their political and / or economic orientation, leans to the right, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because right-wing governments tend to prioritize fiscal discipline and are less ideologically aligned with humanitarian spending.
 
 ## Hypotheses Testing
-
+Ongoing
 
 ## Sources
+Ongoing
 

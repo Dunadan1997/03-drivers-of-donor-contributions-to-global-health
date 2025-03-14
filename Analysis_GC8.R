@@ -971,6 +971,10 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
 
 # Set up visuals
 blue <- "#2E4DF9"
+red <- "#EE0C3D"
+yellow <- "#F6DE00"
+grey <- "#696969"
+
 
 source_TGF <- "Source: The Global Fund (TGF), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
 
@@ -985,6 +989,19 @@ plot_frame <-
     panel.grid.major.y = element_line(linewidth = 0.25), 
     text = element_text(size = 12.5, family = "serif")
   ) 
+
+list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% filter(donor_type == "public") %>% 
+  ggplot(aes(as.factor(year), log(pledge_USD))) + 
+  geom_jitter(color = grey, alpha = 0.5) + 
+  geom_boxplot() +
+  labs(
+    title = "Median Contribution per Public Sector Donor (log-scale)",
+    x = NULL, y = NULL,
+    caption = source_TGF
+  ) +
+  plot_frame
 
 # Test Hypothesis 1
 list_data %>% 
