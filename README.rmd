@@ -114,7 +114,17 @@ Despite its reliance on a small group of major donors, TGF has expanded its dono
 
 Additionally, the number of public sector donors was initially high and met with excitement when the Fund launched in 2001 but stabilized at 30 after the adoption of the Replenishment model in 2005 (see Figure 5). It began rising again in 2016, nearly doubled by 2019, and reached almost 50 in 2022. Most new donors are low to middle-income countries, reflecting a positive shift toward greater self-reliance among recipient nations. However, despite this progress, the financial contributions from these new donors remain relatively small. As a result, they cannot be relied on as a hedge against a potential funding drop from the US and other European countries, especially since these countries' budgets would also be affected by a global reduction in international aid.
 
-Furthermore, the expansion of the donor base has coincided with a decline in the median financial contribution per country (see Figure 6). This highlights that simply increasing the number of donors is not sufficient to boost overall funding levels. In parallel, it is essential to maintain individual country contributions high to sustain and enhance the level of support to recipient countries.
+Furthermore, the expansion of the donor base has coincided with a decline in the median financial contribution per country (see Figure 6). This suggests that simply increasing the number of donors is not enough to boost overall funding levels. To sustain and enhance support for recipient countries, it is equally important to maintain high individual country contributions. Nevertheless, a more diverse donor base still holds value as a hedge against funding risks—a direction that many organizations and recipient countries will need to explore as the US limits its involvement in international aid.
+
+Overall, The Global Fund has benefited from consistent growth in funding, enabling it to improve health outcomes in developing countries and earn international recognition. While the success of its grants has undoubtedly played a role in securing continued support, other factors may have also influenced public donor contributions. This question is particularly relevant in an era when financing appears to be driven less by the measurable impact of international aid and more by the alignment of that aid with donor countries’ national interests. In other words, development practitioners must look beyond the effectiveness of their programs and examine the economic and political conditions shaping public donor contributions.
+
+Financial contributions can be understood through the lens of supply and demand. The demand for funding is represented by current country needs, as well as trends in the incidence and mortality of HIV/AIDS, tuberculosis, and malaria (HTM). Based on these factors, The Global Fund, in collaboration with academic experts, has estimated that US$18 billion is needed to stay on track to end HTM by 2030. On the supply side, a country’s ability and willingness to contribute depends on several economic and political considerations.
+
+One way to assess this is through trends in Official Development Assistance (ODA), which reflect the total volume of aid disbursed by donor countries. Higher ODA levels may indicate a greater likelihood of increased contributions to The Global Fund. Similarly, if other international aid organizations receive greater public sector contributions, The Global Fund may also benefit, given that these organizations operate within the same sector and under similar funding conditions.
+
+More fundamentally, the extent to which funding supply matches demand depends on the broader political and economic context of donor countries. For example, a government experiencing strong economic growth and fiscal stability may be better positioned to contribute than one facing recession and high public debt. Political ideology may also play a role: left-leaning governments, which typically emphasize universal healthcare and poverty reduction, may be more inclined to support humanitarian initiatives, whereas right-leaning governments may prioritize domestic spending and military investments. Additionally, electoral cycles could impact funding commitments—during an election year, governments may be preoccupied with domestic politics, making it harder for The Global Fund to make its investment case heard.
+
+These hypotheses are generalizations that will not apply to all particular cases. 
 
 ```{r plot 4 & 5, fig.width=7, fig.height=4.5}
 # Plot the share of private sector donations
@@ -170,6 +180,8 @@ list_data %>%
   ) +
   plot_frame
 ```
+
+Organizational job cuts in Geneva Secretariats: 20% in OIM, 40% in UNAIDS.
 
 ## Hypotheses
 1. If the financial contributions from government donors to other global health organizations, such as GAVI, and multilateral development banks, like the IDA, decline, then the financial contributions from public donors to The Global Fund (TGF) will decrease, because TGF tends to align its funding expectations with global trends in public health financing.
