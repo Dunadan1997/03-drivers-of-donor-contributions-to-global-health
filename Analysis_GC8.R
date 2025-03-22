@@ -161,8 +161,7 @@ list_data$data[[which(list_data$source == "TGF")]] <-
                                               )
                                        )
                                 )
-                         ),
-    donor_name = ifelse(donor_name == "Korea (Republic)", "South Korea", donor_name)
+                         )
     )
 
 # Select relevant variables from IMF fiscal data
@@ -847,7 +846,7 @@ list_data <-
         summarise(
           across(where(is.numeric), ~ mean(., na.rm = TRUE)), 
           across(where(is.character), ~ str_c(unique(.), collapse = ", "))) %>% 
-        fill(party_name, party_name_short, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_")) %>% 
+        fill(party_name, party_name_short, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_"), elecdate) %>% 
         ungroup() %>% 
         mutate(across(everything(), ~ ifelse(is.nan(.), NA, .))) %>% 
         select(country_name, year, elecdate, party_name, party_name_short, year_in, year_out, lrgen_ches, lrecon_ches, lrgen_mp, contains("_id_"),
@@ -864,27 +863,6 @@ list_data <-
         )
     )
   )
-
-# Calculate number of elections per year from Donor Countries
-n_elections <-
-  list_data %>% 
-  filter(source == "POLITICAL_FACTORS") %>% 
-  pluck(2, 1) %>% select(country_name, elecdate) %>% 
-  filter(!is.na(elecdate)) %>% 
-  group_by(country_name) %>% 
-  distinct() %>% 
-  mutate(
-    check = country_name %in% pull(list_data$data[[which(list_data$source == "TGF")]], donor_name)
-    ) %>% 
-  filter(check == "TRUE") %>% 
-  group_by(elecdate) %>% 
-  summarise(
-    n_elections = n()
-    ) %>% 
-  arrange(elecdate) %>% 
-  mutate(
-    n_elections_rollavg = slide_sum(n_elections, before = 1, after = 1)
-    )
 
 # Join all data with the TGF table  
 list_data <-
@@ -925,17 +903,18 @@ list_data <-
             filter(source == "CGD") %>%
             pluck(2,1), 
           by = c("donor_name", "grant_cycle")
-          ) %>% 
-        left_join(
-          n_elections %>% 
-            rename(year = elecdate),
-          by = "year"
-        )
+          )
       )
     )
 
-# Create grouping variables
+# Calculate if election took place during replenishment year
+list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  mutate(yes_elec = ifelse(year == elecdate, 1, 0))
 
+# Create grouping variables
 list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
   list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
@@ -984,11 +963,11 @@ plot_frame <-
   theme( 
     plot.title.position = "plot",
     plot.caption.position = "plot",
-    plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0)),
+    plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0), size = 9),
     panel.grid.major.x = element_line(linewidth = 0.25),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.y = element_line(linewidth = 0.25), 
-    text = element_text(size = 12.5, family = "serif")
+    text = element_text(size = 12.5, family = "serif"),
   ) 
 
 # Test Hypothesis 1
