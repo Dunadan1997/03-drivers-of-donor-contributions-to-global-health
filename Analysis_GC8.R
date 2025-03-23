@@ -971,13 +971,17 @@ plot_frame <-
   ) 
 
 # Test Hypothesis 1
-list_data %>% 
+hypo_01 <-
+  list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>%
   filter(donor_type == "public") %>% 
-  select(donor_name, pledge_USD, GAVI, ADF, IFAD, IDA, GCF, PF, LDF, GEF, GPE, AfDf, CEPI) %>% 
+  select(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, PF, GEF, GPE, AfDf, CEPI)
+
+hypo_01_plot <- 
+  hypo_01 %>% 
   pivot_longer(
-    cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "PF", "LDF", "GEF", "GPE", "AfDf", "CEPI"), 
+    cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "PF", "GEF", "GPE", "AfDf", "CEPI"), 
     names_to = "orgs", values_to = "pledge_orgs"
     ) %>% 
   filter(pledge_orgs > 0) %>% 
@@ -986,20 +990,44 @@ list_data %>%
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ orgs)
 
+hypo_01_corr_matrix <-
+  cor(hypo_01, use = "complete.obs")
+
+hypo_01_corr_plot <-
+  ggcorrplot::ggcorrplot(
+    hypo_01_corr_matrix, 
+    lab = TRUE, 
+    colors = c(red, "white", blue)
+    )
+  
 # Test Hypothesis 2
-list_data %>% 
+hypo_02 <-
+  list_data %>% 
   filter(source == "FULL_FACTORS") %>%
   pluck(2,1) %>% 
-  filter(donor_type == "public") %>% 
+  filter(donor_type == "public" & !is.na(oda_spent)) %>% 
+  select(pledge_USD, oda_spent)
+
+hypo_02_plot <-
+  hypo_02 %>% 
   ggplot(aes(log(oda_spent), log(pledge_USD))) + 
   geom_point() + 
   geom_smooth(method = "lm")
 
+hypo_02_corr <-
+  cor(hypo_02$oda_spent, hypo_02$pledge_USD, use = "complete.obs")
+
 # Test Hypothesis 3
-list_data %>% 
+hypo_03 <-
+  list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
-  pluck(2,1) %>% filter(donor_type == "public") %>% 
-  select(donor_name, pledge_USD, ends_with("rllavg01")) %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  select(pledge_USD, ends_with("rllavg01")) %>% 
+  drop_na()
+
+hypo_03_plot <-
+  hypo_03 %>% 
   pivot_longer(
     cols = c("expdtr_rllavg01", "revn_rllavg01", "prmryfsclblc_rllavg01", 
              "fsclblc_rllavg01", "adjfsclblc_rllavg01", "grsdbt_rllavg01", 
@@ -1010,12 +1038,24 @@ list_data %>%
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ fiscal_indicators)
 
+hypo_03_corr_matrix <-
+  cor(hypo_03, use = "complete.obs")
+
+Hypo_03_corr_plot <-
+  ggcorrplot::ggcorrplot(
+    hypo_03_corr_matrix, 
+    lab = TRUE, 
+    colors = c(red, "white", blue)
+  )
+  
+
 # Test Hypothesis 4
 
 
 # Test Hypothesis 5
 
 
+# Test Hypothesis 6
 
 
 
