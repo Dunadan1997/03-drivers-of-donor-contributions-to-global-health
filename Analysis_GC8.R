@@ -235,7 +235,7 @@ list_data$data[[which(list_data$source == "IMF2")]] <-
     "Inedx",
     "Percent of total labor force"
     )
-  ) %>% 
+  ) %>%
   select(-Scale, -Units, -`Country/Series-specific Notes`, -`Estimates Start After`) %>% 
 # Transform table into a long format by turning years into rows
   pivot_longer(
@@ -258,11 +258,17 @@ list_data$data[[which(list_data$source == "IMF2")]] <-
     values_from = "obs_values") %>%
 # Clean and rename column names
   rename_with(~ str_replace_all(.x, " \\(|, | |/|-|\\) ", "_"), everything()) %>% 
-  rename(donor_name = Country) %>% 
+  rename(donor_name = Country, 
+         gdp_cp = Gross_domestic_product_constant_prices,
+         gdp_per_cap_cp = Gross_domestic_product_per_capita_constant_prices,
+         inflation_rt = Inflation_end_of_period_consumer_prices,
+         imports_vl = Volume_of_imports_of_goods_and_services,
+         exports_vl = Volume_of_exports_of_goods_and_services,
+         unemployment_rt = Unemployment_rate) %>% 
 # Create rolling average of economic outlook indicators
   group_by(donor_name) %>% 
   mutate(across(
-    Gross_domestic_product_constant_prices:Unemployment_rate, 
+   gdp_cp:unemployment_rt, 
     ~ slide_mean(.x, before = 2, na_rm = TRUE),
     .names = "{.col}_rllavg02" 
   ))
@@ -914,6 +920,36 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
   pluck(2,1) %>% 
   mutate(yes_elec = ifelse(year == elecdate, 1, 0))
 
+# Calculate a variable combining left-right ideological placements from CHES and MP
+list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  mutate(
+    lrgen_all = 
+      ifelse(
+        is.na(lrgen_ches), lrgen_mp, ifelse(
+          is.na(lrgen_mp), lrgen_ches, (lrgen_ches + lrgen_mp) / 2
+          )
+        ),
+    lr_all = 
+      ifelse(
+        is.na(lrgen_ches) & is.na(lrgen_mp) & is.na(lrecon_ches), NA, ifelse(
+          is.na(lrgen_ches) & is.na(lrgen_mp), lrecon_ches, ifelse(
+            is.na(lrgen_ches) & is.na(lrecon_ches), lrgen_mp, ifelse(
+              is.na(lrgen_mp) & is.na(lrecon_ches), lrgen_ches, ifelse(
+                is.na(lrgen_ches), (lrgen_mp + lrecon_ches) / 2, ifelse(
+                  is.na(lrgen_mp), (lrgen_ches + lrecon_ches) / 2, ifelse(
+                    is.na(lrecon_ches), (lrgen_ches + lrgen_mp) / 2, (lrgen_ches + lrgen_mp + lrecon_ches) / 3
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    ) 
+
 # Create grouping variables
 list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
   list_data %>% 
@@ -1041,7 +1077,7 @@ hypo_03_plot <-
 hypo_03_corr_matrix <-
   cor(hypo_03, use = "complete.obs")
 
-Hypo_03_corr_plot <-
+hypo_03_corr_plot <-
   ggcorrplot::ggcorrplot(
     hypo_03_corr_matrix, 
     lab = TRUE, 
@@ -1050,14 +1086,97 @@ Hypo_03_corr_plot <-
   
 
 # Test Hypothesis 4
+hypo_04 <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  select(pledge_USD, ends_with("rllavg02")) %>% 
+  drop_na()
 
+hypo_04_plot_tab <-
+  hypo_04 %>% 
+  pivot_longer(
+    cols = c(c(hypo_04 %>% select(-pledge_USD) %>% colnames)), 
+    names_to = "growth_indicators", values_to = "obs_value")
+
+hypo_04_plot_1 <-
+  hypo_04_plot_tab %>% 
+  filter(!growth_indicators %in% c("gdp_per_cap_constant_prices_rllavg02")) %>% 
+  ggplot(aes(obs_value, log(pledge_USD))) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = F) + 
+  facet_wrap(~ growth_indicators)
+
+hypo_04_plot_2 <-
+  hypo_04_plot_tab %>% 
+  filter(growth_indicators == "gdp_per_cap_constant_prices_rllavg02") %>% 
+  ggplot(aes(obs_value, log(pledge_USD))) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = F) + 
+  facet_wrap(~ growth_indicators)
+
+hypo_04_corr_matrix <-
+  cor(hypo_04, use = "complete.obs")
+
+hypo_04_corr_plot <-
+  ggcorrplot::ggcorrplot(
+    hypo_04_corr_matrix, 
+    lab = TRUE, 
+    colors = c(red, "white", blue)
+  )
 
 # Test Hypothesis 5
+hypo_05 <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  select(pledge_USD, starts_with("lr")) 
 
+hypo_05_plot <-
+  hypo_05 %>% 
+  pivot_longer(
+    cols = c(c(hypo_05 %>% select(-pledge_USD) %>% colnames)), 
+    names_to = "lr_scale", values_to = "obs_value") %>% 
+  ggplot(aes(obs_value, log(pledge_USD))) + 
+  geom_point() + 
+  geom_smooth(method = "lm", se = F) + 
+  facet_wrap(~ lr_scale)
+
+hypo_05_corr_matrix <-
+  cor(hypo_05, use = "complete.obs")
+
+hypo_05_corr_plot <-
+  ggcorrplot::ggcorrplot(
+    hypo_05_corr_matrix, 
+    lab = TRUE, 
+    colors = c(red, "white", blue)
+  )
 
 # Test Hypothesis 6
+hypo_06 <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  select(pledge_USD, yes_elec) %>% 
+  drop_na()
 
+hypo_06_plot <-
+  hypo_06 %>% 
+  ggplot(aes(as.factor(yes_elec), log(pledge_USD))) +
+  geom_jitter(alpha = 0.5, fill = grey) +
+  geom_boxplot(alpha = 0.75)
 
+hypo_06_corr_matrix <-
+  cor(hypo_06, use = "complete.obs")
 
+hypo_06_corr_plot <-
+  ggcorrplot::ggcorrplot(
+    hypo_06_corr_matrix, 
+    lab = TRUE, 
+    colors = c(red, "white", blue)
+  )
 
 
