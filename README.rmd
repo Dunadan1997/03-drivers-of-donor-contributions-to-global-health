@@ -215,6 +215,8 @@ Having analysed the historical replenishment outcomes of The Global Fund and out
 6. If the replenishment year coincides with the re-election year of donor governments, then their financial contributions to The Global Fund (TGF) will be smaller, because electoral priorities and domestic political considerations may reduce focus on international aid commitments and make it more challenging for TGF to secure funding.
 
 ## Hypotheses Testing
+The Global Fund is part of a wider community of international health organizations.
+
 In an article from 2024, researchers from the CDG showed how multiple organizations were seeking funds at a time of constrained donor funding. Coming at the end of this traffic jam, can we use the replenishment results of other organizations to estimate what TGF might receive? We will try to answer this question.
 
 ## Recommendations
