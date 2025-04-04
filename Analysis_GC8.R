@@ -990,9 +990,35 @@ red <- "#EE0C3D"
 yellow <- "#F6DE00"
 grey <- "#696969"
 
+# Define blue shades
+blue_shades <- c(
+  "blue_light" = "#9AA7FB",
+  "blue_med_light" = "#5D77FA",
+  "blue_base" = "#2E4DF9",
+  "blue_dark" = "#1E30B3"
+)
+
+# Define red shades
+red_shades <- c(
+  "red_light" = "#F89CAB",
+  "red_med_light" = "#F05070",
+  "red_base" = "#EE0C3D",
+  "red_dark" = "#9E062A"
+)
+
+# Define yellow shades
+yellow_shades <- c(
+  "yellow_light" = "#FFF4A3",
+  "yellow_med_light" = "#FBE84F",
+  "yellow_base" = "#F6DE00",
+  "yellow_dark" = "#BBAA00"
+)
 
 source_TGF <- 
   "Source: The Global Fund (TGF), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
+
+source_CGD <-
+  "Source: Center for Global Development (CGD), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
 
 plot_frame <- 
   theme_minimal() + 
@@ -1003,7 +1029,7 @@ plot_frame <-
     panel.grid.major.x = element_line(linewidth = 0.25),
     panel.grid.minor.x = element_blank(),
     panel.grid.major.y = element_line(linewidth = 0.25), 
-    text = element_text(size = 12.5, family = "serif"),
+    text = element_text(size = 12.5, family = "serif")
   ) 
 
 # Test Hypothesis 1
@@ -1012,19 +1038,24 @@ hypo_01 <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>%
   filter(donor_type == "public") %>% 
-  select(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, PF, GEF, GPE, AfDf, CEPI)
+  select(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI)
 
 hypo_01_plot <- 
   hypo_01 %>% 
   pivot_longer(
-    cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "PF", "GEF", "GPE", "AfDf", "CEPI"), 
+    cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "GEF", "GPE", "AfDf", "CEPI"), 
     names_to = "orgs", values_to = "pledge_orgs"
     ) %>% 
+  mutate(org_type = 
+           ifelse(orgs %in% c("AfDf", "ADF", "IDA", "IFAD"), "MDB Concessional funds", 
+                  ifelse(orgs %in% c("GAVI", "CEPI", "GEF"), "Health funds", "Climate funds"))
+         ) %>% 
   filter(pledge_orgs > 0) %>% 
-  ggplot(aes(log(pledge_orgs), log(pledge_USD))) + 
-  geom_point() + 
+  mutate(orgs = factor(orgs, levels = c("GCF", "GPE", "CEPI", "GAVI", "GEF", "ADF", "AfDf", "IDA", "IFAD"))) %>% 
+  ggplot(aes(log(pledge_orgs), log(pledge_USD), color = orgs)) + 
+  geom_point(alpha = 0.25) + 
   geom_smooth(method = "lm", se = F) + 
-  facet_wrap(~ orgs)
+  facet_wrap(~ org_type)
 
 hypo_01_corr_matrix <-
   cor(hypo_01, use = "complete.obs")

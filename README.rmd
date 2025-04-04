@@ -7,7 +7,7 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 # Set up r-markdown
-knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
 
 # Load clean data
 source("Analysis_GC8.R")
@@ -38,7 +38,7 @@ A look at the distribution of financial contributions to The Global Fund from 20
 
 Like many international organizations, TGF relies heavily on the US as its largest donor, with a cumulative contribution of US\$27 billion since 2001 (see Figure 2). This dominance underscores the US’s strong commitment to multilateralism over the past two decades. Beyond the US, the next largest contributors are France, the United Kingdom (UK), Germany, and Japan, having each contributed over US\$5 billion. Historically, TGF's top ten donors have been exclusively high-income members of the Organisation for Economic Co-operation and Development (OECD). These rankings have remained broadly consistent across replenishment cycles, highlighting the Fund's reliance on a stable group of donors for the past two decades.
 
-OECD countries account for over 90% of public sector pledges to The Global Fund, with the United States' share increasing in recent years (see Figure 2 & 3). In 2022, under the Biden Administration, US contributions spiked to 42% of total public sector pledges, reaching US$6 billion. Meanwhile, pledges from non-OECD countries have remained stable since 2001, with no significant increase from BRIC members such as China, Brazil, or India. This suggests that BRIC countries are unlikely to offset expected funding cuts from the US and key European donors, raising concerns about potential funding gaps. More importantly, the lack of support from BRIC nations may signal a failure to effectively engage with these donors, though it is known that China, in particular, prefers bilateral aid over multilateral contributions.
+OECD countries account for over 90% of public sector pledges to The Global Fund, with the United States' share increasing in recent years (see Figure 2 & 3). In 2022, just as development assistance for health was reaching record levels due to the COVID-19 pandemic, US contributions spiked to 42% of total public sector pledges, reaching US$6 billion (Apeagyei (Micah), Dieleman and Leach-Kemon, 2024). Meanwhile, pledges from non-OECD countries have remained stable since 2001, with no significant increase from BRIC members such as China, Brazil, or India. This suggests that BRIC countries are unlikely to offset expected funding cuts from the US and key European donors, raising concerns about potential funding gaps. More importantly, the lack of support from BRIC nations may signal a failure to effectively engage with these donors, though it is known that China, in particular, prefers bilateral aid over multilateral contributions.
 
 ```{r plot 1 & 2, fig.height=4.25}
 # Plot the distribution of pledges
@@ -219,16 +219,54 @@ The Global Fund is part of an ecosystem of international health organizations, e
 
 We can reasonably assume that this interdependence extends to financing. Most global health organizations depend on ODA to fund their programs and staff worldwide. Additionally, they often rely on the same group of wealthy donors, though the degree of dependence may vary. As a result, the funding levels received by other international aid organizations might serve as a useful benchmark for the funding TGF receives during its replenishments.
 
-To test this assumption, we used data collected by the CGD on the country pledges received by various Multilateral Development Banks (MDBs) or concessional funds, such as the International Development Association (IDA) from the World Bank, health funds like GAVI and the Coalition for Epidemic Preparedness Innovations (CEPI), and climate funds over the past two decades. By mapping these pledges against the contributions received by TGF from 2001 to 2022, we found a moderate to strong positive correlation across most organizations (see figure #). This indicates that TGF's replenishment outcomes are positively correlated with those of other organizations; for example, if donors increase their funding to GAVI, they are likely to also increase funding for TGF, and vice-versa.
+To test this assumption, we used data collected by the CGD on the country pledges received by various Multilateral Development Banks (MDBs) or concessional funds, such as the International Development Association (IDA) of the World Bank, health funds like GAVI and the Coalition for Epidemic Preparedness Innovations (CEPI), and climate funds over the past two decades. By mapping these pledges against the contributions received by TGF from 2001 to 2022, we found a moderate to strong positive correlation across most organizations (see figure 8). This indicates that TGF's replenishment outcomes are positively correlated with those of other organizations; for example, if donors increase their funding to GAVI, they are likely to also increase funding for TGF, and vice-versa.
 
-Moreover, we also observe that The Global Fund's public sector donor pledges are more strongly correlated with concessional funds like the IDA and the African Development Fund (AfDF) than with global health funds. This could be because many health funds were launched recently, limiting the available data for comparison. However, this explanation does not hold for GAVI, as the Vaccine Alliance was established before TGF in 2000. An alternative explanation might be that TGF has a broader donor base compared to GAVI, which is also true of concessional funds that often attract contributions from both traditional donors and emerging economies.
+Moreover, we also observe that The Global Fund's public sector donor pledges are more strongly correlated with concessional funds like the IDA and the African Development Fund (AfDF) than with global health funds. This could be because many health funds were launched recently, limiting the available data for comparison. However, this explanation does not hold for GAVI, as the Vaccine Alliance was established before TGF in 2000. It may be that The Global Fund is more deeply embedded within the broader development finance architecture, which could explain why its funding is more closely correlated with that of other large concessional vehicles.
+
+```{r plot 8}
+# Plot TGF's replenishment outcomes against the replenishment outcomes of peer organizations
+hypo_01_plot +
+  plot_frame + 
+  labs(
+      title = "Figure 8: Strong Correlation Between The Global Fund and Peer\nReplenishment   Outcomes",
+      caption = source_CGD, 
+      x = "Log of Pledges to International Aid Organizations (USD)", 
+      y = "Log of Pledges to The Global Fund (USD)"
+      ) + 
+  scale_color_manual(
+    values = c(
+      yellow_shades[[3]], 
+      yellow_shades[[4]],
+      blue_shades[[2]], 
+      blue_shades[[3]], 
+      blue_shades[[4]], 
+      red_shades[[1]], 
+      red_shades[[2]], 
+      red_shades[[3]], 
+      red_shades[[4]])) + 
+  theme(
+    axis.title = element_text(size = 10)
+    ) +
+  guides(
+    color = guide_legend(title = "")
+    )
+```
+
+Financial contributions to The Global Fund are also highly positively correlated with the levels of ODA disbursements by donors. 
+
+```{r plot 9}
+# Plot TGF's replenishment outcomes against ODA disbursements
+hypo_02_plot +
+  plot_frame
+```
 
 Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean.
 
 ## Recommendations
-Not Started
 
 ## Sources
+Apeagyei (Micah), A., Dieleman, J. and Leach-Kemon, K. (2024) Financing Global Health 2023: The Future of Health Financing in the Post-Pandemic Era. Institute for Health Metrics and Evaluation, 14 May. Available at: https://www.healthdata.org/research-analysis/library/financing-global-health-2023-future-health-financing-post-pandemic-era (Accessed: 1 April 2025).
+
 Döring, H. and Manow, P. (2024) ParlGov 2024 Release. Available at: https://doi.org/10.7910/DVN/2VZ5ZC (Accessed: 22/03/2025).
 
 Galvin, G. (2025) ‘“Utterly devastating”: Global health groups left reeling as European countries slash foreign aid’, Euronews, 7 March. Available at: https://www.euronews.com/health/2025/03/07/utterly-devastating-global-health-groups-left-reeling-as-european-countries-slash-foreign- (Accessed: 23 March 2025).
