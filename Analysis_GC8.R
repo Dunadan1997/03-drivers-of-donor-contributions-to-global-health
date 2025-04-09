@@ -1093,13 +1093,14 @@ hypo_03 <-
   select(pledge_USD, ends_with("rllavg01")) %>% 
   drop_na()
 
-hypo_03_plot <-
+hypo_03a_plot <-
   hypo_03 %>% 
   pivot_longer(
     cols = c("expdtr_rllavg01", "revn_rllavg01", "prmryfsclblc_rllavg01", 
              "fsclblc_rllavg01", "adjfsclblc_rllavg01", "grsdbt_rllavg01", 
              "ntdbt_rllavg01", "prmryadjfsclblc_rllavg01"), 
-    names_to = "fiscal_indicators", values_to = "obs_value") %>% 
+    names_to = "fiscal_indicators", values_to = "obs_value") %>%
+  filter(!fiscal_indicators %in% c("grsdbt_rllavg01", "ntdbt_rllavg01")) %>% 
   ggplot(aes(obs_value, log(pledge_USD))) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F) + 
@@ -1133,7 +1134,7 @@ hypo_04_plot_tab <-
 
 hypo_04_plot_1 <-
   hypo_04_plot_tab %>% 
-  filter(!growth_indicators %in% c("gdp_per_cap_constant_prices_rllavg02")) %>% 
+  filter(!growth_indicators %in% c("gdp_per_cap_cp_rllavg02")) %>% 
   ggplot(aes(obs_value, log(pledge_USD))) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F) + 
@@ -1141,7 +1142,7 @@ hypo_04_plot_1 <-
 
 hypo_04_plot_2 <-
   hypo_04_plot_tab %>% 
-  filter(growth_indicators == "gdp_per_cap_constant_prices_rllavg02") %>% 
+  filter(growth_indicators == "gdp_per_cap_cp_rllavg02") %>% 
   ggplot(aes(obs_value, log(pledge_USD))) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F) + 
