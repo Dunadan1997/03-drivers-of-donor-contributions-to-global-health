@@ -223,8 +223,6 @@ To test this assumption, we used data collected by the CGD on the country pledge
 
 Moreover, we observe that The Global Fund's public sector donor pledges are more strongly correlated with concessional funds like the IDA and the African Development Fund (AfDF) than with global health funds. This could be because many health funds were launched recently, limiting the available data for comparison. However, this explanation does not hold for GAVI, as the Vaccine Alliance was established before TGF in 2000. It may be that The Global Fund is more deeply embedded within the broader development finance architecture, which could explain why its funding is more closely correlated with that of other large concessional vehicles.
 
-Financial contributions to The Global Fund are also strongly and positively correlated with the levels of ODA disbursements by public sector donors. This relationship is expected, as ODA represents the main financial channel through which governments support the economic development and welfare of low- and middle-income countries, and The Global Fund serves as a key multilateral mechanism through which donors fulfill these commitments in the health sector. Therefore, the more a country spends on ODA, the more we can typically expect it to contribute to The Global Fund. Conversely, if a country’s overall ODA spending declines, its contributions to The Global Fund are also likely to fall. Importantly, the strength of this relationship may vary depending on a government’s preference for bilateral versus multilateral aid. If a country primarily delivers aid through bilateral channels, changes to its ODA envelope may have a more limited impact on The Global Fund compared to countries that prioritize multilateral mechanisms.
-
 ```{r plot 8}
 # Plot TGF's replenishment outcomes against the replenishment outcomes of peer organizations
 hypo_01_plot +
@@ -255,6 +253,10 @@ hypo_01_plot +
     color = guide_legend(title = "", nrow = 1)
     )
 ```
+
+Financial contributions to The Global Fund are also strongly and positively correlated with the levels of ODA disbursements by public sector donors. This relationship is expected, as ODA represents the main financial channel through which governments support the economic development and welfare of low- and middle-income countries, and The Global Fund serves as a key multilateral mechanism through which donors fulfill these commitments in the health sector. Therefore, the more a country spends on ODA, the more we can typically expect it to contribute to The Global Fund. Conversely, if a country’s overall ODA spending declines, its contributions to The Global Fund are also likely to fall. 
+
+Importantly, the strength of this relationship may vary depending on a government’s preference for bilateral versus multilateral aid. If a country primarily delivers aid through bilateral channels, changes to its ODA envelope may have a more limited impact on The Global Fund compared to countries that prioritize multilateral mechanisms.
 
 ```{r plot 9}
 # Plot TGF's replenishment outcomes against ODA disbursements
