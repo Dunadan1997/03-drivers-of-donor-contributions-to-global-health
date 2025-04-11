@@ -1055,7 +1055,7 @@ hypo_01_plot <-
   ggplot(aes(log(pledge_orgs), log(pledge_USD), color = orgs)) + 
   geom_point(alpha = 0.25) + 
   geom_smooth(method = "lm", se = F) + 
-  facet_wrap(~ org_type)
+  facet_wrap(~ org_type, scales = "free_x")
 
 hypo_01_corr_matrix <-
   cor(hypo_01, use = "complete.obs")
@@ -1093,18 +1093,17 @@ hypo_03 <-
   select(pledge_USD, ends_with("rllavg01")) %>% 
   drop_na()
 
-hypo_03a_plot <-
+hypo_03_plot <-
   hypo_03 %>% 
   pivot_longer(
     cols = c("expdtr_rllavg01", "revn_rllavg01", "prmryfsclblc_rllavg01", 
              "fsclblc_rllavg01", "adjfsclblc_rllavg01", "grsdbt_rllavg01", 
              "ntdbt_rllavg01", "prmryadjfsclblc_rllavg01"), 
     names_to = "fiscal_indicators", values_to = "obs_value") %>%
-  filter(!fiscal_indicators %in% c("grsdbt_rllavg01", "ntdbt_rllavg01")) %>% 
   ggplot(aes(obs_value, log(pledge_USD))) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F) + 
-  facet_wrap(~ fiscal_indicators)
+  facet_wrap(~ fiscal_indicators, scales = "free_x")
 
 hypo_03_corr_matrix <-
   cor(hypo_03, use = "complete.obs")
@@ -1132,21 +1131,12 @@ hypo_04_plot_tab <-
     cols = c(c(hypo_04 %>% select(-pledge_USD) %>% colnames)), 
     names_to = "growth_indicators", values_to = "obs_value")
 
-hypo_04_plot_1 <-
+hypo_04_plot <-
   hypo_04_plot_tab %>% 
-  filter(!growth_indicators %in% c("gdp_per_cap_cp_rllavg02")) %>% 
   ggplot(aes(obs_value, log(pledge_USD))) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F) + 
-  facet_wrap(~ growth_indicators)
-
-hypo_04_plot_2 <-
-  hypo_04_plot_tab %>% 
-  filter(growth_indicators == "gdp_per_cap_cp_rllavg02") %>% 
-  ggplot(aes(obs_value, log(pledge_USD))) + 
-  geom_point() + 
-  geom_smooth(method = "lm", se = F) + 
-  facet_wrap(~ growth_indicators)
+  facet_wrap(~ growth_indicators, scales = "free_x")
 
 hypo_04_corr_matrix <-
   cor(hypo_04, use = "complete.obs")
