@@ -223,7 +223,17 @@ To test this assumption, we used data collected by the CGD on the country pledge
 
 Moreover, we observe that The Global Fund's public sector donor pledges are more strongly correlated with concessional funds like the IDA and the African Development Fund (AfDF) than with global health funds. This could be because many health funds were launched recently, limiting the available data for comparison. However, this explanation does not hold for GAVI, as the Vaccine Alliance was established before TGF in 2000. It may be that The Global Fund is more deeply embedded within the broader development finance architecture, which could explain why its funding is more closely correlated with that of other large concessional vehicles.
 
-```{r plot 8}
+Financial contributions to The Global Fund are also strongly and positively correlated with the levels of ODA disbursements by public sector donors. This relationship is expected, as ODA represents the main financial channel through which governments support the economic development and welfare of low and middle income countries, and The Global Fund serves as a key multilateral mechanism through which donors fulfill these commitments in the health sector. Therefore, the more a country spends on ODA, the more we can typically expect it to contribute to The Global Fund. Conversely, if a country’s overall ODA spending declines, its contributions to The Global Fund are also likely to fall. 
+
+Importantly, the strength of this relationship may vary depending on a government’s preference for bilateral versus multilateral aid. If a country primarily delivers aid through bilateral channels, changes to its ODA envelope may have a more limited impact on The Global Fund compared to countries that prioritize multilateral mechanisms.
+
+Beyond the direct supply of funding to aid organizations and recipient countries through ODA, the economic and political context of donor countries is also expected to play an important role in shaping contributions to The Global Fund. Government pledges must ultimately be financed through domestic tax revenue or borrowing. As such, a country’s tax capacity and its ability or willingness to raise debt can enable or constrain its potential to supply ODA, and, by extension, its ability to fund global health initiatives like The Global Fund. However, it is important to note that ODA levels are not determined solely by fiscal space; they often reflect political priorities and strategic choices.
+
+The IMF regularly compiles data to monitor the fiscal health of governments around the world. Its Fiscal Monitor includes eight standardized indicators (as percentages of GDP): government expenditure, government revenue, (primary) net lending / borrowing, gross debt, net debt, and cyclically adjusted (primary) balance. These measures gauge whether a government is operating within prudent fiscal limits or running into fiscal strain.
+
+By mapping these fiscal metrics against donor contributions to The Global Fund, we find that pledges exhibit a moderate negative correlation with indicators of fiscal balance, and a weak-to-moderate positive correlation with indicators of government debt. In simpler terms, donor countries that are more fiscally conservative or operate within tighter budgetary constraints tend to pledge less to The Global Fund than countries with higher levels of public debt.
+
+```{r plot 8, fig.height = 4.7}
 # Plot TGF's replenishment outcomes against the replenishment outcomes of peer organizations
 hypo_01_plot +
   plot_frame + 
@@ -254,21 +264,11 @@ hypo_01_plot +
     )
 ```
 
-Financial contributions to The Global Fund are also strongly and positively correlated with the levels of ODA disbursements by public sector donors. This relationship is expected, as ODA represents the main financial channel through which governments support the economic development and welfare of low and middle income countries, and The Global Fund serves as a key multilateral mechanism through which donors fulfill these commitments in the health sector. Therefore, the more a country spends on ODA, the more we can typically expect it to contribute to The Global Fund. Conversely, if a country’s overall ODA spending declines, its contributions to The Global Fund are also likely to fall. 
-
-Importantly, the strength of this relationship may vary depending on a government’s preference for bilateral versus multilateral aid. If a country primarily delivers aid through bilateral channels, changes to its ODA envelope may have a more limited impact on The Global Fund compared to countries that prioritize multilateral mechanisms.
-
-```{r plot 9}
+```{r plot 9, fig.height = 4}
 # Plot TGF's replenishment outcomes against ODA disbursements
 hypo_02_plot +
   plot_frame
 ```
-
-Beyond the direct supply of funding to aid organizations and recipient countries through ODA, the economic and political context of donor countries is also expected to play an important role in shaping contributions to The Global Fund. Government pledges must ultimately be financed through domestic tax revenue or borrowing. As such, a country’s tax capacity and its ability or willingness to raise debt can enable or constrain its potential to supply ODA, and, by extension, its ability to fund global health initiatives like The Global Fund. However, it is important to note that ODA levels are not determined solely by fiscal space; they often reflect political priorities and strategic choices.
-
-The IMF regularly compiles data to monitor the fiscal health of governments around the world. Its Fiscal Monitor includes eight standardized indicators (as percentages of GDP): government expenditure, government revenue, (primary) net lending / borrowing, gross debt, net debt, and cyclically adjusted (primary) balance. These measures gauge whether a government is operating within prudent fiscal limits or running into fiscal strain.
-
-By mapping these fiscal metrics against donor contributions to The Global Fund, we find that pledges exhibit a moderate negative correlation with indicators of fiscal balance, and a weak-to-moderate positive correlation with indicators of government debt. In simpler terms, donor countries that are more fiscally conservative or operate within tighter budgetary constraints tend to pledge less to The Global Fund than countries with higher levels of public debt.
 
 This may seem counterintuitive at first. One might expect highly indebted countries to reduce discretionary spending, such as aid, in an effort to repair their balance sheets. However, countries that are more comfortable financing public spending through debt may, paradoxically, have greater fiscal space to maintain or even increase aid commitments. Some high-income countries also enjoy strong credit ratings and low borrowing costs, giving them more flexibility to sustain international commitments, including ODA. In this context, global health spending can be viewed not as a financial burden, but as a strategic investment aligned with foreign policy and soft power objectives.
 
@@ -284,21 +284,34 @@ There is mixed historical evidence supporting this. During the 2008 Global Finan
 
 There are multiple reasons for this. Many donor governments treat global health as a moral or diplomatic priority, and multilateral platforms like The Global Fund encourage burden-sharing and peer accountability. As a result, a country might sustain or increase pledges based on prior rounds of funding even during periods of economic weakness to maintain international credibility or signal leadership in global health.
 
-That said, there is one small and seemingly contradictory trend worth highlighting: pledges from public sector donors appear to be negatively correlated with GDP but positively correlated with GDP per Capita. While it is hard to draw a reliable assessment based on these weak correlations...
+While it is difficult to draw firm tendencies from these weak correlations, one small and seemingly contradictory trend is worth highlighting: pledges from public sector donors appear to be negatively correlated with GDP, but positively correlated with GDP per capita. At first glance, this might seem counterintuitive, but from an economic perspective, it makes sense. GDP reflects the overall size of a country’s economy, but not necessarily its wealth. In contrast, GDP per capita serves as a rough proxy for individual-level wealth and a country’s economic development. This pattern suggests that smaller but wealthier countries may contribute more generously to The Global Fund than larger economies with lower per capita income. For instance, upper-middle-income countries such as China and other BRIC members have large GDPs but contribute relatively modestly to the Fund, skewing the overall relationship. Ultimately, this trend aligns with expectations as ODA is largely driven by high-income countries, which tend to have more fiscal space to fund global health.
 
-This might sound odd but it becomes less so when looking from the perspective of an economist. GDP measures the economic size of a country, which does not automatically reflect a country's wealth. In contrast, GDP per Capita captures the wealth on an individual basis, not how big the economy is. The data therefore suggests, only so slightly, that wealthy countries with small economies tend to contribute more than poorer countries with larger economies. Developing economies, like China and other BRIC countries, have large economies but do not significantly contribute to The Global Fund, adding to the negative correlation. This is intuitive as we might expect wealthier countries to be in a better economic position to fund global health priorities. 
-
-```{r plot 10}
+```{r plot 10, fig.height = 4.4}
 hypo_03_plot +
   plot_frame
 ```
 
-```{r plot 11}
+```{r plot 11, fig.height = 4.4}
 hypo_04_plot +
   plot_frame
 ```
 
-The political context is also often perceived as crucial for gauging the level of funding The Global Fund might receive. Provide example...
+The political context is also often perceived as crucial for gauging the level of funding The Global Fund might receive. It is a common belief, for example, that left-wing governments are more attuned to humanitarian values and therefore will be more forth coming in their funding of international aid. Pundits also tend to be concerned when replenishments fall during electoral periods of key donors, the worry being that governments will be more focused on re-election than on the priorities of global health. On the face of it, both assumptions seem reasonable.
+
+We compiled historical data on the governments, and their placement on a left-right ideological spectrum, of major democratic donors of The Global Fund, using four databases. The CHES provides expert assessments of party positions on ideological and policy dimensions across Europe, while PAGED tracks party participation in executive office since 1990. The ParlGov project links data on elections, political parties, and governments in parliamentary democracies, and the Manifesto Project analyzes party manifestos to quantify ideological stances and policy priorities over time. 
+
+Surprisingly, the data indicates a weak and positive relationship between the ideological placement of donor governments and their pledge to The Global Fund. This suggests that right-leaning governments tend to give more to the partnership compared to left-leaning governments, though the reliability of this observation is limited by the weakness of the correlation.
+
+```{r plot 12, warning = FALSE}
+hypo_05_plot +
+  plot_frame
+```
+
+```{r plot 13, warning = FALSE}
+hypo_06_plot +
+  plot_frame
+```
+
 
 ## Recommendations
 Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean.

@@ -1115,7 +1115,6 @@ hypo_03_corr_plot <-
     colors = c(red, "white", blue)
   )
   
-
 # Test Hypothesis 4
 hypo_04 <-
   list_data %>% 
