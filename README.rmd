@@ -2,12 +2,22 @@
 title: "Replenishing Hope: Political and Economic Drivers of Public Sector Support for The Global Fund"
 date: 2025-03-23
 author: "Bruno Alves de Carvalho"
-output: pdf_document
+output:
+  pdf_document:
+    latex_engine: xelatex
+    includes:
+      in_header: spacing.tex
+mainfont: "Arial"
 ---
 
 ```{r setup, include=FALSE}
 # Set up r-markdown
 knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+
+# Set up font
+library(showtext)
+font_add(family = "Arial", regular = "arial.ttf")
+showtext_auto()
 
 # Load clean data
 source("Analysis_GC8.R")
@@ -48,7 +58,7 @@ p_pledge_distribution <-
   pluck(2,1) %>% 
   filter(donor_type == "public" & pledge_USD > 0) %>% 
   ggplot(aes(pledge_USD)) + 
-  geom_histogram(bins = 30) +
+  geom_histogram(bins = 30, fill = red_shades[[3]]) +
   labs (
     title = "Figure 1 & 2: Pledge Distribution and Top Ten Donors of The Global Fund\nfrom 2001 to 2022", 
     x = NULL, 
@@ -56,10 +66,10 @@ p_pledge_distribution <-
     caption = source_TGF
     ) + 
   scale_x_continuous(
-    breaks = c(0, 2000, 4000, 6000),
+    breaks = c(200, 2000, 4000, 6000),
     labels = scales::label_currency(suffix = "mil")
     ) + 
-  plot_frame
+  plot_frame_bar
 
 # Plot the top 10 biggest donors since 2001 
 df_plot <- 
@@ -78,7 +88,7 @@ p_top_donors <-
     ) + 
   geom_bar(
     stat = "identity", 
-    fill = grey
+    fill = red_shades[[2]]
     ) +
   labs(
     x = NULL, 
@@ -88,7 +98,7 @@ p_top_donors <-
     breaks = c(5000, 15000, 25000), 
     labels = scales::label_currency(suffix = "mil")
     ) +
-  plot_frame
+  plot_frame_bar
 
 # Combine plots
 p_pledge_distribution + p_top_donors
@@ -103,18 +113,21 @@ p_relative_contributions <-
   ggplot(aes(as.factor(year), pledge_USD, fill = oecd_status)) + 
   geom_bar(stat = "identity", position = "fill") +
   labs(
-    title = "Figure 3 & 4: Perentage and Dollar Share of Financial Contributions",
+    title = "Figure 3 & 4: Perentage and US Dollar Share of Financial Contributions\nto The Global Fund",
     x = NULL, y = NULL,
     caption = source_TGF
     ) +
   scale_y_continuous(labels = scales::percent_format()) +
-  scale_fill_manual(values = c(red, yellow, blue)) +
-  plot_frame +
+  scale_fill_manual(values = c(blue_shades[[1]], blue_shades[[2]], blue_shades[[3]])) +
+  plot_frame_bar +
   theme(legend.position = "top",
+        legend.box.margin = margin(t = 0, r = 0, b = 0, l = 225),
+        legend.key.spacing.x = unit(2, "cm"),
         legend.title = element_blank()
         ) +
   guides(
-    fill= guide_legend(reverse = TRUE)
+    fill= guide_legend(reverse = TRUE),
+    color = guide_legend(title = "", nrow = 1)
     )
 
 # Plot the absolute financial contribution by country from 2001 to 2023
@@ -128,8 +141,8 @@ p_absolute_contributions <-
     x = NULL, y = NULL
   ) +
   scale_y_continuous(labels = scales::label_currency(suffix = "mil")) +
-  scale_fill_manual(values = c(red, yellow, blue)) +
-  plot_frame 
+  scale_fill_manual(values = c(blue_shades[[1]], blue_shades[[2]], blue_shades[[3]])) +
+  plot_frame_bar 
 
 # Combine both plots
 p_relative_contributions + p_absolute_contributions
@@ -158,7 +171,8 @@ p_private_relative_contributions <-
     caption = source_TGF
     ) +
   scale_y_continuous(labels = scales::percent_format()) +
-  plot_frame
+  scale_x_discrete(labels = c(""))
+  plot_frame_bar
 
 # Plot the number of government donors per grant cycle
 p_num_donors <-
@@ -174,7 +188,7 @@ p_num_donors <-
     x = NULL, y = NULL
   ) +
   scale_y_continuous(breaks = c(0, 30, 40, 50, 60)) +
-  plot_frame 
+  plot_frame_bar 
 
 # Combine both plots
 p_private_relative_contributions + p_num_donors 
@@ -183,16 +197,37 @@ p_private_relative_contributions + p_num_donors
 ```{r plot 7, fig.width=7, fig.height=5}
 # Plot the median financial country contribution from 2001 to 2023
 list_data %>% 
-  filter(source == "FULL_FACTORS") %>% 
-  pluck(2,1) %>% filter(donor_type == "public") %>% 
-  ggplot(aes(as.factor(year), log(pledge_USD))) + 
-  geom_jitter(color = grey, alpha = 0.5) + 
-  geom_boxplot() +
+    filter(source == "FULL_FACTORS") %>% 
+    pluck(2,1) %>% filter(donor_type == "public") %>% 
+    ggplot() + 
+  geom_line(
+    aes(year, log(pledge_USD), group = donor_name), 
+    color = red_shades[[1]], alpha = 0.25
+    ) + 
+  geom_line(
+    data = 
+      list_data %>% 
+      filter(source == "FULL_FACTORS") %>% 
+      pluck(2,1) %>% 
+      filter(donor_type == "public") %>% 
+      group_by(year) %>% 
+      summarise(median = median(log(pledge_USD))), 
+    aes(year, median), 
+    color = red_shades[[3]], linewidth = 1, 
+    arrow = arrow(length = unit(0.25, "cm"), type = "closed")
+    ) + 
   labs(
-    title = "Figure 7: Median Contribution per Public Sector Donor (log-scale)",
+    title = "Figure 7: Log of Financial Contributions to The Global Fund by Country\nDonor from 2001 to 2022",
     x = NULL, y = NULL,
     caption = source_TGF
-  ) +
+    ) + 
+  scale_x_continuous(breaks = c(2001, 2005, 2007, 2010, 2013, 2016, 2019, 2022)) +
+  scale_y_continuous(breaks = c(-3,7), labels = c("Lower\nPledges", "Higher\nPledges")) +
+   geom_text(
+     x = 2003.25, y = 1.5, 
+     label = "Median\nPledge", 
+     family = "Arial", color = red_shades[[3]], size = 3.5, fontface = "bold"
+     ) +
   plot_frame
 ```
 
@@ -238,7 +273,7 @@ By mapping these fiscal metrics against donor contributions to The Global Fund, 
 hypo_01_plot +
   plot_frame + 
   labs(
-      title = "Figure 8: Strong Correlation Between The Global Fund and Peer\nReplenishment   Outcomes",
+      title = "Figure 8: Strong Correlation Between The Global Fund and Peer\nReplenishment Outcomes",
       caption = source_CGD, 
       x = "Log of Pledges to International Aid Organizations (USD)", 
       y = "Log of Pledges to The Global Fund (USD)"
@@ -311,7 +346,6 @@ hypo_05_plot +
 hypo_06_plot +
   plot_frame
 ```
-
 
 ## Recommendations
 Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean.

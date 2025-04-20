@@ -1020,16 +1020,26 @@ source_TGF <-
 source_CGD <-
   "Source: Center for Global Development (CGD), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
 
+plot_frame_bar <- 
+  theme_minimal() + 
+  theme( 
+    plot.title.position = "plot",
+    plot.caption.position = "plot",
+    plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0), size = 9),
+    panel.grid = element_blank(),
+    text = element_text(size = 12.5, family = "Arial")
+  ) 
+
 plot_frame <- 
   theme_minimal() + 
   theme( 
     plot.title.position = "plot",
     plot.caption.position = "plot",
     plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0), size = 9),
-    panel.grid.major.x = element_line(linewidth = 0.25),
-    panel.grid.minor.x = element_blank(),
-    panel.grid.major.y = element_line(linewidth = 0.25), 
-    text = element_text(size = 12.5, family = "serif")
+    panel.grid = element_blank(),
+    axis.line = element_line(linewidth = 0.25),
+    axis.ticks = element_line(linewidth = 0.25),
+    text = element_text(size = 12.5, family = "Arial")
   ) 
 
 # Test Hypothesis 1
