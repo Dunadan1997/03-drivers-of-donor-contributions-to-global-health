@@ -57,8 +57,8 @@ p_pledge_distribution <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>% 
   filter(donor_type == "public" & pledge_USD > 0) %>% 
-  ggplot(aes(pledge_USD)) + 
-  geom_histogram(bins = 30, fill = red_shades[[3]]) +
+  ggplot(aes(pledge_USD / 1000)) + 
+  geom_histogram(bins = 30, fill = red_shades[[2]]) +
   labs (
     title = "Figure 1 & 2: Pledge Distribution and Top Ten Donors of The Global Fund\nfrom 2001 to 2022", 
     x = NULL, 
@@ -66,10 +66,14 @@ p_pledge_distribution <-
     caption = source_TGF
     ) + 
   scale_x_continuous(
-    breaks = c(200, 2000, 4000, 6000),
-    labels = scales::label_currency(suffix = "mil")
+    breaks = c(0.2, 2, 4, 6),
+    labels = scales::label_currency(suffix = "bn", accuracy = 0.1)
     ) + 
-  plot_frame_bar
+  plot_frame_bar +
+  theme(
+    axis.line.x = element_line(linewidth = 0.15), 
+    axis.ticks.x = element_line(linewidth = 0.15)
+    )
 
 # Plot the top 10 biggest donors since 2001 
 df_plot <- 
@@ -84,7 +88,7 @@ df_plot <-
 p_top_donors <-
   df_plot %>% 
   ggplot(
-    aes(sum, fct_reorder(donor_name, sum))
+    aes(sum / 1000, fct_reorder(donor_name, sum))
     ) + 
   geom_bar(
     stat = "identity", 
@@ -95,10 +99,14 @@ p_top_donors <-
     y = NULL
     ) + 
   scale_x_continuous(
-    breaks = c(5000, 15000, 25000), 
-    labels = scales::label_currency(suffix = "mil")
+    breaks = c(5, 15, 25), 
+    labels = scales::label_currency(suffix = "bn")
     ) +
-  plot_frame_bar
+  plot_frame_bar +
+  theme(
+    axis.line.x = element_line(linewidth = 0.15), 
+    axis.ticks.x = element_line(linewidth = 0.15)
+    )
 
 # Combine plots
 p_pledge_distribution + p_top_donors
@@ -118,6 +126,7 @@ p_relative_contributions <-
     caption = source_TGF
     ) +
   scale_y_continuous(labels = scales::percent_format()) +
+  scale_x_discrete(labels = c("'01", "'05", "'07", "'10", "'13", "'16", "'19", "'22")) +
   scale_fill_manual(values = c(blue_shades[[1]], blue_shades[[2]], blue_shades[[3]])) +
   plot_frame_bar +
   theme(legend.position = "top",
@@ -141,6 +150,7 @@ p_absolute_contributions <-
     x = NULL, y = NULL
   ) +
   scale_y_continuous(labels = scales::label_currency(suffix = "mil")) +
+  scale_x_discrete(labels = c("'01", "'05", "'07", "'10", "'13", "'16", "'19", "'22")) +
   scale_fill_manual(values = c(blue_shades[[1]], blue_shades[[2]], blue_shades[[3]])) +
   plot_frame_bar 
 
@@ -164,14 +174,14 @@ p_private_relative_contributions <-
   mutate(prct = pledge_USD / sum(pledge_USD)) %>% 
   filter(donor_type == "private") %>% 
   ggplot(aes(as.factor(year), prct)) + 
-  geom_bar(stat = "identity", fill = grey) +
+  geom_bar(stat = "identity", fill = yellow_shades[[3]]) +
   labs(
-    title = "Figure 5 & 6: Percentage of Private Sector Contributions (left) and Number of Public\nSector Donors (right)",
+    title = "Figure 5 & 6: Percentage of Private Sector Contributions and Number of\nPublic Sector Donors",
     x = NULL, y = NULL,
     caption = source_TGF
     ) +
   scale_y_continuous(labels = scales::percent_format()) +
-  scale_x_discrete(labels = c(""))
+  scale_x_discrete(labels = c("'01", "'05", "'07", "'10", "'13", "'16", "'19", "'22")) +
   plot_frame_bar
 
 # Plot the number of government donors per grant cycle
@@ -183,52 +193,69 @@ p_num_donors <-
   group_by(year) %>% 
   count() %>% 
   ggplot(aes(as.factor(year), n)) + 
-  geom_bar(stat = "identity", fill = grey) +
+  geom_bar(stat = "identity", fill = yellow_shades[[2]]) +
   labs(
     x = NULL, y = NULL
   ) +
   scale_y_continuous(breaks = c(0, 30, 40, 50, 60)) +
+  scale_x_discrete(labels = c("'01", "'05", "'07", "'10", "'13", "'16", "'19", "'22")) +
   plot_frame_bar 
 
 # Combine both plots
 p_private_relative_contributions + p_num_donors 
 ```
 
-```{r plot 7, fig.width=7, fig.height=5}
+```{r plot 7, fig.width=7, fig.height=5, warning = FALSE}
 # Plot the median financial country contribution from 2001 to 2023
+median_contributions <- 
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  group_by(year) %>% 
+  summarise(median = median(log(pledge_USD)))
+
 list_data %>% 
     filter(source == "FULL_FACTORS") %>% 
     pluck(2,1) %>% filter(donor_type == "public") %>% 
     ggplot() + 
-  geom_line(
-    aes(year, log(pledge_USD), group = donor_name), 
-    color = red_shades[[1]], alpha = 0.25
+    geom_line(
+        aes(year, log(pledge_USD), group = donor_name), 
+        color = grey, alpha = 0.25
     ) + 
-  geom_line(
-    data = 
-      list_data %>% 
-      filter(source == "FULL_FACTORS") %>% 
-      pluck(2,1) %>% 
-      filter(donor_type == "public") %>% 
-      group_by(year) %>% 
-      summarise(median = median(log(pledge_USD))), 
-    aes(year, median), 
-    color = red_shades[[3]], linewidth = 1, 
-    arrow = arrow(length = unit(0.25, "cm"), type = "closed")
+    geom_line(
+        data = 
+            median_contributions %>% 
+            filter(year >=2013),
+        aes(year, median), 
+        color = red_shades[[3]], linewidth = 1, 
+        arrow = arrow(length = unit(0.25, "cm"), type = "closed")
     ) + 
-  labs(
-    title = "Figure 7: Log of Financial Contributions to The Global Fund by Country\nDonor from 2001 to 2022",
-    x = NULL, y = NULL,
-    caption = source_TGF
+    geom_line(
+        data = 
+            median_contributions %>% 
+            filter(year <=2013),
+        aes(year, median),
+        color = red_shades[[1]], linewidth = 1, alpha = 1
     ) + 
-  scale_x_continuous(breaks = c(2001, 2005, 2007, 2010, 2013, 2016, 2019, 2022)) +
-  scale_y_continuous(breaks = c(-3,7), labels = c("Lower\nPledges", "Higher\nPledges")) +
-   geom_text(
-     x = 2003.25, y = 1.5, 
-     label = "Median\nPledge", 
-     family = "Arial", color = red_shades[[3]], size = 3.5, fontface = "bold"
-     ) +
-  plot_frame
+    geom_segment(x = 2013, y = 3.83, yend = -3.5, linewidth = 0.05, color = red_shades[[3]]) +  
+    geom_point(
+        aes(x = 2013, y = 3.83), 
+        color = red_shades[[3]], size = 1.75
+    ) +
+    labs(
+        title = "Figure 7: Log of Financial Contributions to The Global Fund by Country\nDonor from 2001 to 2022, Median Pledge in Red",
+        x = NULL, y = NULL,
+        caption = source_TGF
+    ) + 
+    scale_x_continuous(breaks = c(2001, 2005, 2007, 2010, 2013, 2016, 2019, 2022)) +
+    scale_y_continuous(breaks = c(-3,7), labels = c("Lower\nPledge", "Higher\nPledge"))+
+    geom_text(
+        x = 2013.25, y = -2.25, 
+        label = "78% drop in median pledge size,\neven as country donors increased\npost-2013", 
+        hjust = 0, family = "Arial", color = red_shades[[3]], size = 3.5, fontface = "bold"
+    ) +
+    plot_frame
 ```
 
 Overall, the skewed distribution of pledges reveals deep structural realities about international funding: economic disparities, donor dominance, and long-term sustainability risks. Even though TGF has made progress in diversifying its donor pool, the financial weight remains highly concentrated among a few key players. These issues notwithstanding, the Global Fund has benefited from consistent growth in public sector funding, from US\$4.7 billion in 2001 to US\$14 billion in 2022, enabling it to improve health outcomes in developing countries and earn international recognition. While the success of its grants has undoubtedly played a role in securing continued support, other factors may have also influenced public donor contributions. This question is particularly relevant in an era when financing appears to be driven less by the measurable impact of international aid and more by the alignment of that aid with donor countries’ national interests. In other words, we must look beyond the effectiveness of aid programs and examine the economic and political conditions shaping public donor contributions.
@@ -268,16 +295,17 @@ The IMF regularly compiles data to monitor the fiscal health of governments arou
 
 By mapping these fiscal metrics against donor contributions to The Global Fund, we find that pledges exhibit a moderate negative correlation with indicators of fiscal balance, and a weak-to-moderate positive correlation with indicators of government debt. In simpler terms, donor countries that are more fiscally conservative or operate within tighter budgetary constraints tend to pledge less to The Global Fund than countries with higher levels of public debt.
 
-```{r plot 8, fig.height = 4.7}
+```{r plot 8, fig.height = 5}
 # Plot TGF's replenishment outcomes against the replenishment outcomes of peer organizations
 hypo_01_plot +
-  plot_frame + 
-  labs(
-      title = "Figure 8: Strong Correlation Between The Global Fund and Peer\nReplenishment Outcomes",
-      caption = source_CGD, 
-      x = "Log of Pledges to International Aid Organizations (USD)", 
-      y = "Log of Pledges to The Global Fund (USD)"
-      ) + 
+    plot_frame + 
+    labs(
+        title = "Figure 8: Strong Correlation Between The Global Fund and Peer\nReplenishment Outcomes",
+        caption = source_CGD,x = "Log of Pledges to International Aid Organizations (USD)", 
+        y = "Log of Pledges to The Global Fund (USD)"
+    ) + 
+  scale_y_continuous(breaks = c(-3.5, 7.5), labels = c("Low\nPledge", "High\nPledge")) + 
+  scale_x_continuous(breaks = c(-3.5, 6.5), labels = c("Low\nPledge", "High\nPledge")) +
   scale_color_manual(
     values = c(
       yellow_shades[[3]], 
@@ -291,6 +319,8 @@ hypo_01_plot +
       red_shades[[4]])) + 
   theme(
     axis.title = element_text(size = 10),
+    axis.title.x = element_text(margin = margin(t = 10)), 
+    axis.title.y = element_text(margin = margin(r = 10)),
     legend.position = "top",
     legend.box.margin = margin(t = 0, r = 50, b = 0, l = 0)
     ) +

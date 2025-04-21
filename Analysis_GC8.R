@@ -1037,8 +1037,8 @@ plot_frame <-
     plot.caption.position = "plot",
     plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0), size = 9),
     panel.grid = element_blank(),
-    axis.line = element_line(linewidth = 0.25),
-    axis.ticks = element_line(linewidth = 0.25),
+    axis.line = element_line(linewidth = 0.15),
+    axis.ticks = element_line(linewidth = 0.15),
     text = element_text(size = 12.5, family = "Arial")
   ) 
 
@@ -1063,9 +1063,9 @@ hypo_01_plot <-
   filter(pledge_orgs > 0) %>% 
   mutate(orgs = factor(orgs, levels = c("GCF", "GPE", "CEPI", "GAVI", "GEF", "ADF", "AfDf", "IDA", "IFAD"))) %>% 
   ggplot(aes(log(pledge_orgs), log(pledge_USD), color = orgs)) + 
-  geom_point(alpha = 0.25) + 
+  geom_point(alpha = 0.15) + 
   geom_smooth(method = "lm", se = F) + 
-  facet_wrap(~ org_type, scales = "free_x")
+  facet_wrap(~ org_type)
 
 hypo_01_corr_matrix <-
   cor(hypo_01, use = "complete.obs")
@@ -1089,7 +1089,7 @@ hypo_02_plot <-
   hypo_02 %>% 
   ggplot(aes(log(oda_spent), log(pledge_USD))) + 
   geom_point() + 
-  geom_smooth(method = "lm")
+  geom_smooth(method = "lm", se = FALSE)
 
 hypo_02_corr <-
   cor(hypo_02$oda_spent, hypo_02$pledge_USD, use = "complete.obs")
