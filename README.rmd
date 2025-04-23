@@ -4,9 +4,9 @@ date: 2025-03-23
 author: "Bruno Alves de Carvalho"
 output:
   pdf_document:
-    latex_engine: xelatex
-    includes:
-      in_header: spacing.tex
+#    latex_engine: xelatex
+#    includes:
+#      in_header: spacing.tex
 mainfont: "Arial"
 ---
 
@@ -295,44 +295,122 @@ The IMF regularly compiles data to monitor the fiscal health of governments arou
 
 By mapping these fiscal metrics against donor contributions to The Global Fund, we find that pledges exhibit a moderate negative correlation with indicators of fiscal balance, and a weak-to-moderate positive correlation with indicators of government debt. In simpler terms, donor countries that are more fiscally conservative or operate within tighter budgetary constraints tend to pledge less to The Global Fund than countries with higher levels of public debt.
 
-```{r plot 8, fig.height = 5}
+```{r plot 8, fig.height = 9.5}
 # Plot TGF's replenishment outcomes against the replenishment outcomes of peer organizations
-hypo_01_plot +
+create_plot8 <- function(org_type = 1) {
+  
+  tab <-
+    hypo_01 %>% 
+    pivot_longer(
+      cols = c("GAVI", "ADF", "IFAD", "IDA", "GCF", "GEF", "GPE", "AfDf", "CEPI"), 
+      names_to = "orgs", values_to = "pledge_orgs"
+    ) %>% 
+    mutate(org_type = 
+             ifelse(orgs %in% c("AfDf", "ADF", "IDA", "IFAD"), "MDB Concessional funds", 
+                    ifelse(orgs %in% c("GAVI", "CEPI", "GEF"), "Health funds", "Climate funds"))
+    ) %>% 
+    filter(pledge_orgs > 0) %>% 
+    mutate(orgs = factor(orgs, levels = c("GCF", "GPE", "CEPI", "GAVI", "GEF", "ADF", "AfDf", "IDA", "IFAD"))) %>% 
+    group_by(org_type) %>% 
+    group_split()
+  
+  tab %>% 
+    pluck(org_type) %>% 
+    ggplot(aes(log(pledge_orgs), log(pledge_USD), color = orgs)) + 
+    geom_point(alpha = 0.15) + 
+    geom_smooth(method = "lm", se = F) +
     plot_frame + 
-    labs(
-        title = "Figure 8: Strong Correlation Between The Global Fund and Peer\nReplenishment Outcomes",
-        caption = source_CGD,x = "Log of Pledges to International Aid Organizations (USD)", 
-        y = "Log of Pledges to The Global Fund (USD)"
+    scale_color_manual(
+      values = c(
+        "GCF" = yellow_shades[[3]], 
+        "GPE" = yellow_shades[[4]],
+        "CEPI" = blue_shades[[2]], 
+        "GAVI" = blue_shades[[3]], 
+        "GEF" = blue_shades[[4]], 
+        "ADF" = red_shades[[1]], 
+        "AfDf" = red_shades[[2]], 
+        "IDA" = red_shades[[3]], 
+        "IFAD" = red_shades[[4]]
+      ),
+      labels = c(
+        "GCF" = "GCF (0.39)",
+        "GPE" = "GPE (0.31)",
+        "CEPI" = "CEPI (0.26)",
+        "GAVI" = "GAVI (0.43)",
+        "GEF" = "GEF (0.61)",
+        "ADF" = "ADF (0.26)",
+        "AfDf" = "AfDf (0.60)",
+        "IDA" = "IDA (0.74)",
+        "IFAD" = "IFAD (0.51)"
+      )
     ) + 
-  scale_y_continuous(breaks = c(-3.5, 7.5), labels = c("Low\nPledge", "High\nPledge")) + 
-  scale_x_continuous(breaks = c(-3.5, 6.5), labels = c("Low\nPledge", "High\nPledge")) +
-  scale_color_manual(
-    values = c(
-      yellow_shades[[3]], 
-      yellow_shades[[4]],
-      blue_shades[[2]], 
-      blue_shades[[3]], 
-      blue_shades[[4]], 
-      red_shades[[1]], 
-      red_shades[[2]], 
-      red_shades[[3]], 
-      red_shades[[4]])) + 
-  theme(
-    axis.title = element_text(size = 10),
-    axis.title.x = element_text(margin = margin(t = 10)), 
-    axis.title.y = element_text(margin = margin(r = 10)),
-    legend.position = "top",
-    legend.box.margin = margin(t = 0, r = 50, b = 0, l = 0)
+    labs(x = NULL, y = NULL) +
+    theme(
+      axis.title = element_text(size = 10),
+      axis.title.x = element_text(margin = margin(t = 10)), 
+      axis.title.y = element_text(margin = margin(r = 10)),
+      legend.position = "top",
+      legend.box.margin = margin(t = 0, r = 50, b = 0, l = 0)
     ) +
-  guides(
-    color = guide_legend(title = "", nrow = 1)
+    guides(
+      color = guide_legend(title = "")
     )
+  
+}
+
+(
+  (create_plot8(2) + 
+     guides(color = guide_legend(title = "Health Funds:")) +
+     scale_x_continuous(
+       breaks = c(-2, 6.75), 
+       labels = c("Low Pledge\nto Peers", "High Pledge\nto Peers")) +
+     scale_y_continuous(
+       breaks = c(-0.5, 6.75), 
+       labels = c("Low\nPledge\nto TGF", "High\nPledge\nto TGF"))) / 
+    (create_plot8(3) + guides(color = guide_legend(title = "MDBs:")) +
+     scale_x_continuous(
+       breaks = c(-4.25, 6.5), 
+       labels = c("Low Pledge\nto Peers", "High Pledge\nto Peers")) +
+     scale_y_continuous(
+       breaks = c(-3, 6.5), 
+       labels = c("Low\nPledge\nto TGF", "High\nPledge\nto TGF"))) / 
+    (create_plot8(1) + guides(color = guide_legend(title = "Climate Funds:")) +
+       scale_x_continuous(
+       breaks = c(-0.75, 7), 
+       labels = c("Low Pledge\nto Peers", "High Pledge\nto Peers")) +
+     scale_y_continuous(
+       breaks = c(-0.25, 7.25), 
+       labels = c("Low\nPledge\nto TGF", "High\nPledge\nto TGF")))
+  ) + 
+  plot_annotation(
+    title = "Figure 8: Moderate to Strong Correlation Between Pledges to The Global Fund\nand Peer Organizations (USD)") +
+  labs(caption = source_CGD) &
+  theme(plot.title = element_text(size = 15, family = "Arial"))
+
 ```
 
 ```{r plot 9, fig.height = 4}
 # Plot TGF's replenishment outcomes against ODA disbursements
 hypo_02_plot +
-  plot_frame
+  plot_frame +
+  labs(
+    title = "Figure 9: Strong Correlation Between Pledges to The Global Fund\nand ODA Disbursements (USD)",
+    caption = source_OECD,
+    x = NULL, y = NULL
+    ) +
+  scale_y_continuous(
+    breaks = c(-2, 7),
+    labels = c("Low\nPledge", "High\nPledge")
+  ) +
+  scale_x_continuous(
+    breaks = c(4, 10),
+    labels = c("Low ODA\nDisbursement", "High ODA\nDisbursement")
+  ) +
+  geom_label(
+    x = 10, y = 5, 
+    label = "Corr 0.88", 
+    family = "Arial", color = purple_shades[[3]], size = 3.5, fontface = "bold"
+    )
 ```
 
 This may seem counterintuitive at first. One might expect highly indebted countries to reduce discretionary spending, such as aid, in an effort to repair their balance sheets. However, countries that are more comfortable financing public spending through debt may, paradoxically, have greater fiscal space to maintain or even increase aid commitments. Some high-income countries also enjoy strong credit ratings and low borrowing costs, giving them more flexibility to sustain international commitments, including ODA. In this context, global health spending can be viewed not as a financial burden, but as a strategic investment aligned with foreign policy and soft power objectives.

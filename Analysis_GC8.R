@@ -1014,11 +1014,38 @@ yellow_shades <- c(
   "yellow_dark" = "#BBAA00"
 )
 
+# Define purple shades
+purple_shades <- c(
+  "purple_light" = "#D7A6F2",
+  "purple_med_light" = "#B865E8",
+  "purple_base" = "#8C29D3",
+  "purple_dark" = "#5D0D91"
+)
+
+# Define green shades
+green_shades <- c(
+  "green_light" = "#B9F5B1",
+  "green_med_light" = "#73DD63",
+  "green_base" = "#44CC36",
+  "green_dark" = "#2D8F25"
+)
+
+# Define orange shades
+orange_shades <- c(
+  "orange_light" = "#FFD69A",
+  "orange_med_light" = "#FFB847",
+  "orange_base" = "#FC9B00",
+  "orange_dark" = "#B76B00"
+)
+
 source_TGF <- 
   "Source: The Global Fund (TGF), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
 
 source_CGD <-
   "Source: Center for Global Development (CGD), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
+
+source_OECD <-
+  "Source: Organisation for Economic Co-operation and Development (OECD), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
 
 plot_frame_bar <- 
   theme_minimal() + 
@@ -1088,8 +1115,8 @@ hypo_02 <-
 hypo_02_plot <-
   hypo_02 %>% 
   ggplot(aes(log(oda_spent), log(pledge_USD))) + 
-  geom_point() + 
-  geom_smooth(method = "lm", se = FALSE)
+  geom_point(alpha = 0.25, color = purple_shades[[3]]) + 
+  geom_smooth(method = "lm", se = FALSE, color = purple_shades[[3]])
 
 hypo_02_corr <-
   cor(hypo_02$oda_spent, hypo_02$pledge_USD, use = "complete.obs")
