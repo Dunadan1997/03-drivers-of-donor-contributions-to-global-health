@@ -1047,6 +1047,9 @@ source_CGD <-
 source_OECD <-
   "Source: Organisation for Economic Co-operation and Development (OECD), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
 
+source_IMF <-
+  "Source: International Monetary Fund (IMF), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
+
 plot_frame_bar <- 
   theme_minimal() + 
   theme( 
@@ -1075,7 +1078,11 @@ hypo_01 <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>%
   filter(donor_type == "public") %>% 
-  select(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI)
+  select(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI) %>% 
+  mutate(across(
+    c(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI),
+    ~ ifelse(. > 0, log(.), NA)
+    ))
 
 hypo_01_plot <- 
   hypo_01 %>% 
@@ -1089,7 +1096,7 @@ hypo_01_plot <-
          ) %>% 
   filter(pledge_orgs > 0) %>% 
   mutate(orgs = factor(orgs, levels = c("GCF", "GPE", "CEPI", "GAVI", "GEF", "ADF", "AfDf", "IDA", "IFAD"))) %>% 
-  ggplot(aes(log(pledge_orgs), log(pledge_USD), color = orgs)) + 
+  ggplot(aes(pledge_orgs, pledge_USD, color = orgs)) + 
   geom_point(alpha = 0.15) + 
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ org_type)
@@ -1110,11 +1117,12 @@ hypo_02 <-
   filter(source == "FULL_FACTORS") %>%
   pluck(2,1) %>% 
   filter(donor_type == "public" & !is.na(oda_spent)) %>% 
-  select(pledge_USD, oda_spent)
+  select(pledge_USD, oda_spent) %>% 
+  mutate(pledge_USD = log(pledge_USD), oda_spent = log(oda_spent))
 
 hypo_02_plot <-
   hypo_02 %>% 
-  ggplot(aes(log(oda_spent), log(pledge_USD))) + 
+  ggplot(aes(oda_spent, pledge_USD)) + 
   geom_point(alpha = 0.25, color = purple_shades[[3]]) + 
   geom_smooth(method = "lm", se = FALSE, color = purple_shades[[3]])
 
@@ -1128,6 +1136,7 @@ hypo_03 <-
   pluck(2,1) %>% 
   filter(donor_type == "public") %>% 
   select(pledge_USD, ends_with("rllavg01")) %>% 
+  mutate(pledge_USD = log(pledge_USD)) %>% 
   drop_na()
 
 hypo_03_plot <-
@@ -1136,14 +1145,27 @@ hypo_03_plot <-
     cols = c("expdtr_rllavg01", "revn_rllavg01", "prmryfsclblc_rllavg01", 
              "fsclblc_rllavg01", "adjfsclblc_rllavg01", "grsdbt_rllavg01", 
              "ntdbt_rllavg01", "prmryadjfsclblc_rllavg01"), 
-    names_to = "fiscal_indicators", values_to = "obs_value") %>%
-  ggplot(aes(obs_value, log(pledge_USD))) + 
-  geom_point() + 
-  geom_smooth(method = "lm", se = F) + 
+    names_to = "fiscal_indicators", values_to = "obs_value") %>% 
+  mutate(
+    fiscal_indicators = factor(
+      fiscal_indicators, 
+      levels = c("fsclblc_rllavg01", "prmryfsclblc_rllavg01", "adjfsclblc_rllavg01", 
+                 "prmryadjfsclblc_rllavg01", "grsdbt_rllavg01", "ntdbt_rllavg01", 
+                 "expdtr_rllavg01", "revn_rllavg01"),
+      labels =c(
+        "Fiscal Balance (corr -0.06)", "Primary Fiscal Balance\n(corr -0.14)", "Adjusted Fiscal Balance\n(corr -0.17)", 
+        "Primary Adjusted Fiscal\nBalance (corr -0.23)", "Gross Government Debt\n(corr 0.35)", "Net Government Debt\n(corr 0.19)", 
+        "Government Expenditure\n(corr 0.30)", "Government Revenue\n(corr 0.24)"
+      )
+      )
+    ) %>%
+  ggplot(aes(obs_value, pledge_USD, color = fiscal_indicators)) + 
+  geom_point(show.legend = FALSE, alpha = 0.25) + 
+  geom_smooth(method = "lm", se = F, show.legend = FALSE) + 
   facet_wrap(~ fiscal_indicators, scales = "free_x")
 
 hypo_03_corr_matrix <-
-  cor(hypo_03, use = "complete.obs")
+  cor(hypo_03, use = "complete.obs", method = "pearson")
 
 hypo_03_corr_plot <-
   ggcorrplot::ggcorrplot(
@@ -1159,6 +1181,7 @@ hypo_04 <-
   pluck(2,1) %>% 
   filter(donor_type == "public") %>% 
   select(pledge_USD, ends_with("rllavg02")) %>% 
+  mutate(pledge_USD = log(pledge_USD)) %>% 
   drop_na()
 
 hypo_04_plot_tab <-
@@ -1169,7 +1192,7 @@ hypo_04_plot_tab <-
 
 hypo_04_plot <-
   hypo_04_plot_tab %>% 
-  ggplot(aes(obs_value, log(pledge_USD))) + 
+  ggplot(aes(obs_value, pledge_USD)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ growth_indicators, scales = "free_x")
@@ -1190,14 +1213,15 @@ hypo_05 <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>% 
   filter(donor_type == "public") %>% 
-  select(pledge_USD, starts_with("lr")) 
+  select(pledge_USD, starts_with("lr")) %>% 
+  mutate(pledge_USD = log(pledge_USD))
 
 hypo_05_plot <-
   hypo_05 %>% 
   pivot_longer(
     cols = c(c(hypo_05 %>% select(-pledge_USD) %>% colnames)), 
     names_to = "lr_scale", values_to = "obs_value") %>% 
-  ggplot(aes(obs_value, log(pledge_USD))) + 
+  ggplot(aes(obs_value, pledge_USD)) + 
   geom_point() + 
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ lr_scale)
@@ -1218,12 +1242,13 @@ hypo_06 <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>% 
   filter(donor_type == "public") %>% 
-  select(pledge_USD, yes_elec) %>% 
+  select(pledge_USD, yes_elec) %>%
+  mutate(pledge_USD = log(pledge_USD)) %>% 
   drop_na()
 
 hypo_06_plot <-
   hypo_06 %>% 
-  ggplot(aes(as.factor(yes_elec), log(pledge_USD))) +
+  ggplot(aes(as.factor(yes_elec), pledge_USD)) +
   geom_jitter(alpha = 0.5, fill = grey) +
   geom_boxplot(alpha = 0.75)
 

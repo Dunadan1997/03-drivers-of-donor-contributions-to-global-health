@@ -316,7 +316,7 @@ create_plot8 <- function(org_type = 1) {
   
   tab %>% 
     pluck(org_type) %>% 
-    ggplot(aes(log(pledge_orgs), log(pledge_USD), color = orgs)) + 
+    ggplot(aes(pledge_orgs, pledge_USD, color = orgs)) + 
     geom_point(alpha = 0.15) + 
     geom_smooth(method = "lm", se = F) +
     plot_frame + 
@@ -333,15 +333,15 @@ create_plot8 <- function(org_type = 1) {
         "IFAD" = red_shades[[4]]
       ),
       labels = c(
-        "GCF" = "GCF (0.39)",
-        "GPE" = "GPE (0.31)",
-        "CEPI" = "CEPI (0.26)",
-        "GAVI" = "GAVI (0.43)",
-        "GEF" = "GEF (0.61)",
-        "ADF" = "ADF (0.26)",
-        "AfDf" = "AfDf (0.60)",
-        "IDA" = "IDA (0.74)",
-        "IFAD" = "IFAD (0.51)"
+        "GCF" = "GCF (corr 0.97)",
+        "GPE" = "GPE (corr 0.57)",
+        "CEPI" = "CEPI (corr 0.66)",
+        "GAVI" = "GAVI (corr 0.88)",
+        "GEF" = "GEF (corr 0.89)",
+        "ADF" = "ADF (corr 0.82)",
+        "AfDf" = "AfDf (corr 0.90)",
+        "IDA" = "IDA (corr 0.92)",
+        "IFAD" = "IFAD (corr 0.83)"
       )
     ) + 
     labs(x = NULL, y = NULL) +
@@ -408,7 +408,7 @@ hypo_02_plot +
   ) +
   geom_label(
     x = 10, y = 5, 
-    label = "Corr 0.88", 
+    label = "Corr 0.90", 
     family = "Arial", color = purple_shades[[3]], size = 3.5, fontface = "bold"
     )
 ```
@@ -429,9 +429,20 @@ There are multiple reasons for this. Many donor governments treat global health 
 
 While it is difficult to draw firm tendencies from these weak correlations, one small and seemingly contradictory trend is worth highlighting: pledges from public sector donors appear to be negatively correlated with GDP, but positively correlated with GDP per capita. At first glance, this might seem counterintuitive, but from an economic perspective, it makes sense. GDP reflects the overall size of a country’s economy, but not necessarily its wealth. In contrast, GDP per capita serves as a rough proxy for individual-level wealth and a country’s economic development. This pattern suggests that smaller but wealthier countries may contribute more generously to The Global Fund than larger economies with lower per capita income. For instance, upper-middle-income countries such as China and other BRIC members have large GDPs but contribute relatively modestly to the Fund, skewing the overall relationship. Ultimately, this trend aligns with expectations as ODA is largely driven by high-income countries, which tend to have more fiscal space to fund global health.
 
-```{r plot 10, fig.height = 4.4}
+```{r plot 10, fig.height = 9.5}
 hypo_03_plot +
-  plot_frame
+  plot_frame + 
+  labs(
+    title = "Figure 10:",
+    x = "3-Year Rolling Average of Fiscal Indicators", y = NULL,
+    caption = source_IMF
+    ) + 
+  scale_y_continuous(breaks = c(-3.5, 6.5), labels = c("Low\nPledge", "High\nPledge")) +
+  scale_color_manual(values = c(
+    green_shades[[1]], green_shades[[2]], green_shades[[3]], green_shades[[4]],
+    orange_shades[[1]], orange_shades[[2]], orange_shades[[3]], orange_shades[[4]]
+  )) +
+  theme(axis.title.x = element_text(margin = margin(t = 10)))
 ```
 
 ```{r plot 11, fig.height = 4.4}
@@ -439,11 +450,13 @@ hypo_04_plot +
   plot_frame
 ```
 
-The political context is also often perceived as crucial for gauging the level of funding The Global Fund might receive. It is a common belief, for example, that left-wing governments are more attuned to humanitarian values and therefore will be more forth coming in their funding of international aid. Pundits also tend to be concerned when replenishments fall during electoral periods of key donors, the worry being that governments will be more focused on re-election than on the priorities of global health. On the face of it, both assumptions seem reasonable.
+The political context is also often viewed as an important factor in understanding the level of funding The Global Fund receives. A common belief is that left-leaning governments, being more aligned with humanitarian values, are more inclined to support international aid. Similarly, commentators often express concern when replenishments coincide with election periods in key donor countries, fearing that governments may prioritize re-election campaigns over global health commitments. On the surface, both assumptions seem reasonable.
 
-We compiled historical data on the governments, and their placement on a left-right ideological spectrum, of major democratic donors of The Global Fund, using four databases. The CHES provides expert assessments of party positions on ideological and policy dimensions across Europe, while PAGED tracks party participation in executive office since 1990. The ParlGov project links data on elections, political parties, and governments in parliamentary democracies, and the Manifesto Project analyzes party manifestos to quantify ideological stances and policy priorities over time. 
+To explore these dynamics, we compiled historical data on the ideological orientation of major democratic donors to The Global Fund, drawing from four key databases. The Chapel Hill Expert Survey (CHES) provides expert assessments of party positions across Europe; PAGED tracks party participation in executive office globally since 1990; ParlGov links information on elections, political parties, and governments in parliamentary systems; and the Manifesto Project analyzes party manifestos to quantify ideological positions and policy priorities over time.
 
-Surprisingly, the data indicates a weak and positive relationship between the ideological placement of donor governments and their pledge to The Global Fund. This suggests that right-leaning governments tend to give more to the partnership compared to left-leaning governments, though the reliability of this observation is limited by the weakness of the correlation.
+Surprisingly, the data indicates a weak but positive relationship between the ideological placement of donor governments and their financial pledges to The Global Fund. This suggests that, on average, right-leaning governments tend to pledge slightly more than left-leaning ones. However, the weakness of this correlation implies that ideology alone is not a strong or reliable predictor of how much a government will contribute.
+
+In addition, the data shows that the median pledge decreases significantly, from \$184 million to \$99.4 million, when replenishment periods overlap with national elections. While this correlation is also weak, the trend may reflect several plausible dynamics: elections can cause administrative delays, lead to fiscal caution as governments avoid new spending commitments, and trigger shifts in political attention toward domestic priorities that resonate more strongly with voters. These factors may collectively reduce the bandwidth and willingness of governments to make ambitious international pledges during electoral periods.
 
 ```{r plot 12, warning = FALSE}
 hypo_05_plot +
@@ -454,6 +467,10 @@ hypo_05_plot +
 hypo_06_plot +
   plot_frame
 ```
+
+So far, the analysis suggests that some of our assumptions may not hold up under scrutiny. However, to rigorously test these relationships, we need to take the analysis a step further by modeling them mathematically through regression analysis. This approach allows us to assess the influence of individual factors, such as fiscal metrics, political ideology, or economic conditions, while controlling for other variables simultaneously. In doing so, we can better isolate the specific impact of each factor on financial contributions to The Global Fund.
+
+Regression analysis also enables us to evaluate the reliability of our observations by testing their statistical significance and goodness of fit. This helps us determine whether the relationships we have identified are likely to hold beyond past replenishment outcomes, making them applicable to future replenishments. Finally, assuming we are able to build a robust model that captures the key predictors of public sector pledges, we may even be able to generate informed projections of future funding outcomes.
 
 ## Recommendations
 Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean.
