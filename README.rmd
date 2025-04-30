@@ -281,9 +281,9 @@ The Global Fund is part of an ecosystem of international health organizations, e
 
 We can reasonably assume that this interdependence extends to financing. Most global health organizations depend on ODA to fund their programs and staff worldwide. Additionally, they often rely on the same group of wealthy donors, though the degree of dependence may vary. As a result, the funding levels received by other international aid organizations might serve as a useful benchmark for the funding TGF receives during its replenishments.
 
-To test this assumption, we used data collected by the CGD on the country pledges received by various Multilateral Development Banks (MDBs) or concessional funds, such as the International Development Association (IDA) of the World Bank, health funds like GAVI and the Coalition for Epidemic Preparedness Innovations (CEPI), and climate funds over the past two decades. By mapping these pledges against the contributions received by TGF from 2001 to 2022, we found a moderate to strong positive correlation across most organizations (see figure 8). This indicates that TGF's replenishment outcomes are positively correlated with those of other organizations; for example, if donors increase their funding to GAVI, they are likely to also increase funding for TGF, and vice-versa.
+To test this assumption, we used data collected by the CGD on the country pledges received by various Multilateral Development Banks (MDBs) or concessional funds, such as the International Development Association (IDA) of the World Bank, health funds like GAVI and the Coalition for Epidemic Preparedness Innovations (CEPI), and climate funds over the past two decades. By comparing these pledges with contributions received by The Global Fund between 2001 and 2022, we found a strong positive correlation across all organizations. While the data is more limited for recently established entities like the Green Climate Fund (GCF) and CEPI, the overall trend holds (see Figure 8). This suggests that The Global Fund’s replenishment outcomes are closely aligned with those of other major multilateral funds, implying that when donors increase funding to GAVI, for instance, they are also likely to increase funding to The Global Fund, and vice versa.
 
-Moreover, we observe that The Global Fund's public sector donor pledges are more strongly correlated with concessional funds like the IDA and the African Development Fund (AfDF) than with global health funds. This could be because many health funds were launched recently, limiting the available data for comparison. However, this explanation does not hold for GAVI, as the Vaccine Alliance was established before TGF in 2000. It may be that The Global Fund is more deeply embedded within the broader development finance architecture, which could explain why its funding is more closely correlated with that of other large concessional vehicles.
+This strong relationship may indicate that public sector donors treat their international aid portfolios holistically, viewing support for different global priorities, such as health and climate, as complementary rather than competing. In this way, global aid does not appear to function as a zero-sum game, where increases to one fund necessarily mean cuts to another. Instead, donor behavior seems to follow a "win-win" or "loss-loss" pattern: when overall aid budgets grow, many multilateral organizations benefit, and when budgets shrink, several are affected simultaneously. In today’s climate of constrained aid budgets, the critical question may be not whether funding will fall, but which organizations will bear the greater burden.
 
 Financial contributions to The Global Fund are also strongly and positively correlated with the levels of ODA disbursements by public sector donors. This relationship is expected, as ODA represents the main financial channel through which governments support the economic development and welfare of low and middle income countries, and The Global Fund serves as a key multilateral mechanism through which donors fulfill these commitments in the health sector. Therefore, the more a country spends on ODA, the more we can typically expect it to contribute to The Global Fund. Conversely, if a country’s overall ODA spending declines, its contributions to The Global Fund are also likely to fall. 
 
@@ -362,24 +362,24 @@ create_plot8 <- function(org_type = 1) {
   (create_plot8(2) + 
      guides(color = guide_legend(title = "Health Funds:")) +
      scale_x_continuous(
-       breaks = c(-2, 6.75), 
+       breaks = c(1.25, 6.75), 
        labels = c("Low Pledge\nto Peers", "High Pledge\nto Peers")) +
      scale_y_continuous(
-       breaks = c(-0.5, 6.75), 
+       breaks = c(-0.5, 7.25), 
        labels = c("Low\nPledge\nto TGF", "High\nPledge\nto TGF"))) / 
     (create_plot8(3) + guides(color = guide_legend(title = "MDBs:")) +
      scale_x_continuous(
-       breaks = c(-4.25, 6.5), 
+       breaks = c(1.15, 7.25), 
        labels = c("Low Pledge\nto Peers", "High Pledge\nto Peers")) +
      scale_y_continuous(
-       breaks = c(-3, 6.5), 
+       breaks = c(-2.5, 7), 
        labels = c("Low\nPledge\nto TGF", "High\nPledge\nto TGF"))) / 
     (create_plot8(1) + guides(color = guide_legend(title = "Climate Funds:")) +
        scale_x_continuous(
-       breaks = c(-0.75, 7), 
+       breaks = c(1, 7), 
        labels = c("Low Pledge\nto Peers", "High Pledge\nto Peers")) +
      scale_y_continuous(
-       breaks = c(-0.25, 7.25), 
+       breaks = c(0.25, 7.5), 
        labels = c("Low\nPledge\nto TGF", "High\nPledge\nto TGF")))
   ) + 
   plot_annotation(
@@ -440,14 +440,25 @@ hypo_03_plot +
   scale_y_continuous(breaks = c(-3.5, 6.5), labels = c("Low\nPledge", "High\nPledge")) +
   scale_color_manual(values = c(
     green_shades[[1]], green_shades[[2]], green_shades[[3]], green_shades[[4]],
-    orange_shades[[1]], orange_shades[[2]], orange_shades[[3]], orange_shades[[4]]
+    purple_shades[[1]], purple_shades[[2]], purple_shades[[3]], purple_shades[[4]]
   )) +
   theme(axis.title.x = element_text(margin = margin(t = 10)))
 ```
 
-```{r plot 11, fig.height = 4.4}
+```{r plot 11, fig.height = 9.5}
 hypo_04_plot +
-  plot_frame
+  plot_frame + 
+  labs(
+    title = "Figure 11:",
+    x = "3-Year Rolling Average of Economic Outlook Indicators", y = NULL,
+    caption = source_IMF
+    ) + 
+  scale_y_continuous(breaks = c(-3.5, 6.5), labels = c("Low\nPledge", "High\nPledge")) +
+  scale_color_manual(values = c(
+    blue_shades[[1]], blue_shades[[2]], blue_shades[[3]], blue_shades[[4]],
+    orange_shades[[1]], orange_shades[[2]], orange_shades[[3]]
+  )) +
+  theme(axis.title.x = element_text(margin = margin(t = 10)))
 ```
 
 The political context is also often viewed as an important factor in understanding the level of funding The Global Fund receives. A common belief is that left-leaning governments, being more aligned with humanitarian values, are more inclined to support international aid. Similarly, commentators often express concern when replenishments coincide with election periods in key donor countries, fearing that governments may prioritize re-election campaigns over global health commitments. On the surface, both assumptions seem reasonable.

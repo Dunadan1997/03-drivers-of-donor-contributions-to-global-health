@@ -232,7 +232,6 @@ list_data$data[[which(list_data$source == "IMF2")]] <-
     "Percent change",
     "Purchasing power parity; 2021 international dollar",
     "Percent of GDP",
-    "Inedx",
     "Percent of total labor force"
     )
   ) %>%
@@ -1192,9 +1191,22 @@ hypo_04_plot_tab <-
 
 hypo_04_plot <-
   hypo_04_plot_tab %>% 
-  ggplot(aes(obs_value, pledge_USD)) + 
-  geom_point() + 
-  geom_smooth(method = "lm", se = F) + 
+  mutate(
+    growth_indicators = factor(
+      growth_indicators, 
+      levels = c("gdp_cp_rllavg02",  "gdp_per_cap_cp_rllavg02", "inflation_rt_rllavg02",
+                 "unemployment_rt_rllavg02", "exports_vl_rllavg02", "imports_vl_rllavg02",
+                 "Total_investment_rllavg02"),
+      labels =c(
+        "GDP (corr -0.32)", "GDP per Capita (corr 0.29)", "Inflation (corr -0.28)", 
+        "Unemployment (corr -0.17)", "Exports (corr -0.30)", "Imports (corr -0.21)", 
+        "Total Investment (corr -0.02)"
+      )
+    )
+  ) %>%
+  ggplot(aes(obs_value, pledge_USD, color = growth_indicators)) + 
+  geom_point(alpha = 0.25, show.legend = FALSE) + 
+  geom_smooth(method = "lm", se = F, show.legend = FALSE) + 
   facet_wrap(~ growth_indicators, scales = "free_x")
 
 hypo_04_corr_matrix <-
