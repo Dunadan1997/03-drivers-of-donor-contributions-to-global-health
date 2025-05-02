@@ -1148,12 +1148,12 @@ hypo_03_plot <-
   mutate(
     fiscal_indicators = factor(
       fiscal_indicators, 
-      levels = c("fsclblc_rllavg01", "prmryfsclblc_rllavg01", "adjfsclblc_rllavg01", 
-                 "prmryadjfsclblc_rllavg01", "grsdbt_rllavg01", "ntdbt_rllavg01", 
+      levels = c("prmryfsclblc_rllavg01", "prmryadjfsclblc_rllavg01", "fsclblc_rllavg01", 
+                 "adjfsclblc_rllavg01", "grsdbt_rllavg01", "ntdbt_rllavg01", 
                  "expdtr_rllavg01", "revn_rllavg01"),
       labels =c(
-        "Fiscal Balance (corr -0.06)", "Primary Fiscal Balance\n(corr -0.14)", "Adjusted Fiscal Balance\n(corr -0.17)", 
-        "Primary Adjusted Fiscal\nBalance (corr -0.23)", "Gross Government Debt\n(corr 0.35)", "Net Government Debt\n(corr 0.19)", 
+        "Primary Fiscal Balance\n(corr -0.14)", "Primary Adjusted Fiscal\nBalance (corr -0.23)", "Fiscal Balance (corr -0.06)", 
+        "Adjusted Fiscal Balance\n(corr -0.17)", "Gross Government Debt\n(corr 0.35)", "Net Government Debt\n(corr 0.19)", 
         "Government Expenditure\n(corr 0.30)", "Government Revenue\n(corr 0.24)"
       )
       )
