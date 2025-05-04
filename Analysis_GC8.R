@@ -1180,7 +1180,10 @@ hypo_04 <-
   pluck(2,1) %>% 
   filter(donor_type == "public") %>% 
   select(pledge_USD, ends_with("rllavg02")) %>% 
-  mutate(pledge_USD = log(pledge_USD)) %>% 
+  mutate(
+    pledge_USD = log(pledge_USD),
+    gdp_per_cap_cp_rllavg02 = log(gdp_per_cap_cp_rllavg02)
+    ) %>% 
   drop_na()
 
 hypo_04_plot_tab <-
@@ -1198,7 +1201,7 @@ hypo_04_plot <-
                  "unemployment_rt_rllavg02", "exports_vl_rllavg02", "imports_vl_rllavg02",
                  "Total_investment_rllavg02"),
       labels =c(
-        "GDP (corr -0.32)", "GDP per Capita (corr 0.29)", "Inflation (corr -0.28)", 
+        "GDP (corr -0.32)", "Log of GDP per Capita\n(corr 0.29)", "Inflation (corr -0.28)", 
         "Unemployment (corr -0.17)", "Exports (corr -0.30)", "Imports (corr -0.21)", 
         "Total Investment (corr -0.02)"
       )
