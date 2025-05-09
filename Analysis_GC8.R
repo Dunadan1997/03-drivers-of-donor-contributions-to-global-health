@@ -1049,6 +1049,12 @@ source_OECD <-
 source_IMF <-
   "Source: International Monetary Fund (IMF), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
 
+source_POL <-
+  "Source: Chapel Hill Expert Survey (CHES), Party Government in Europe Database (PAGED), ParlGov project, and\nthe Manifesto Project database (MP), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
+
+source_TGFPOL <- 
+  "Party Government in Europe Database (PAGED), ParlGov project, and The Global Fund (TGF), author's calculation\nAuthor: Bruno Alves de Carvalho (balvesdecarvalho1906@gmail.com)"
+
 plot_frame_bar <- 
   theme_minimal() + 
   theme( 
@@ -1231,13 +1237,24 @@ hypo_05 <-
   select(pledge_USD, starts_with("lr")) %>% 
   mutate(pledge_USD = log(pledge_USD))
 
-hypo_05_plot <-
+hypo_05_plot_tab <-
   hypo_05 %>% 
   pivot_longer(
     cols = c(c(hypo_05 %>% select(-pledge_USD) %>% colnames)), 
     names_to = "lr_scale", values_to = "obs_value") %>% 
-  ggplot(aes(obs_value, pledge_USD)) + 
-  geom_point() + 
+  filter(lr_scale %in% c("lrgen_all", "lrecon_ches")) %>% 
+  mutate(
+    lr_scale = factor(
+      lr_scale, 
+      levels = c("lrgen_all", "lrecon_ches", "lrgen_ches", "lrgen_mp", "lr_all"),
+      labels = c("Overall\nIdeological Position", "Economic\nIdeological Position", "lrgen_ches", "lrgen_mp", "lr_all"), 
+      )
+  )
+
+hypo_05_plot <-
+  hypo_05_plot_tab %>% 
+  ggplot(aes(obs_value, pledge_USD, color = lr_scale)) + 
+  geom_point(alpha = 0.15) + 
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ lr_scale)
 
@@ -1261,10 +1278,18 @@ hypo_06 <-
   mutate(pledge_USD = log(pledge_USD)) %>% 
   drop_na()
 
+alpha.fn <- function(data, index) {
+  df <- data$pledge_USD[index]
+  median(df, na.rm = TRUE)
+}
+
+alpha.fn(hypo_06 %>% filter(yes_elec == 1), 1:40) %>% exp()
+alpha.fn(hypo_06 %>% filter(yes_elec == 0), 1:124) %>% exp()
+
 hypo_06_plot <-
   hypo_06 %>% 
   ggplot(aes(as.factor(yes_elec), pledge_USD)) +
-  geom_jitter(alpha = 0.5, fill = grey) +
+  geom_jitter(alpha = 0.5, color = yellow_shades[[3]]) +
   geom_boxplot(alpha = 0.75)
 
 hypo_06_corr_matrix <-
