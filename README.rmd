@@ -522,19 +522,30 @@ hypo_05_plot +
 
 ```{r plot 13, warning = FALSE}
 hypo_06_plot +
-  plot_frame +
-  labs(title = "Figure 12:",
-    caption = source_POL,
-    x = NULL, y = NULL
+  plot_frame_bar +
+  labs(title = "Figure 13:",
+       caption = source_POL,
+       x = NULL, y = "Median Pledge (USD)"
+  ) +
+  scale_x_discrete(
+    labels = c("No Election", "Election")
     ) +
   scale_y_continuous(
-    breaks = c(-3.25, 6.75),
-    labels = c("Low\nPledge", "High\nPledge")
+    labels = scales::dollar_format(suffix = " mill")
   ) +
-  scale_x_continuous(
-    breaks = c(3, 7.5),
-    labels = c("Left\nLeaning", "Right\nLeaning")
-  )
+  scale_fill_manual(
+    values = c(yellow_shades[[3]], yellow_shades[[1]])
+  ) +
+  geom_label(
+    data = hypo_06_plot_tab %>% filter(yes_elec == 0),
+    aes(x = 1, y = 184, label = "$184 Mill"),
+    family = "Arial", size = 3.5, fontface = "bold"
+  ) +
+  geom_label(
+    data = hypo_06_plot_tab %>% filter(yes_elec == 1),
+    aes(x = 2, y = 99, label = "$99 Mill"),
+    family = "Arial", size = 3.5, fontface = "bold"
+  ) 
 ```
 
 So far, the analysis suggests that some of our assumptions may not hold up under scrutiny. However, to rigorously test these relationships, we need to take the analysis a step further by modeling them mathematically through regression analysis. This approach allows us to assess the influence of individual factors, such as fiscal metrics, political ideology, or economic conditions, while controlling for other variables simultaneously. In doing so, we can better isolate the specific impact of each factor on financial contributions to The Global Fund.

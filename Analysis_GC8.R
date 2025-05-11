@@ -10,6 +10,7 @@ library(tidyverse)
 library(slider)
 library(stringi)
 library(patchwork)
+library(boot)
 
 # Path to Data Warehouse
 path_to_data_warehouse <- 
@@ -1275,7 +1276,7 @@ hypo_06 <-
   pluck(2,1) %>% 
   filter(donor_type == "public") %>% 
   select(pledge_USD, yes_elec) %>%
-  mutate(pledge_USD = log(pledge_USD)) %>% 
+  mutate(pledge_USD_log = log(pledge_USD)) %>% 
   drop_na()
 
 alpha.fn <- function(data, index) {
@@ -1283,17 +1284,32 @@ alpha.fn <- function(data, index) {
   median(df, na.rm = TRUE)
 }
 
-alpha.fn(hypo_06 %>% filter(yes_elec == 1), 1:40) %>% exp()
-alpha.fn(hypo_06 %>% filter(yes_elec == 0), 1:124) %>% exp()
+set.seed(221)
+hypo_06_plot_tab <- 
+  hypo_06 %>%
+  select(-pledge_USD_log) %>% 
+  group_by(yes_elec) %>%  
+  summarise(
+    median = median(pledge_USD), 
+    se = {
+      group <- pick(.$yes_elec)
+      b <- boot(group, alpha.fn, R = 1000)
+      sd(b$t)
+    },
+    .groups = "drop"
+  )
 
 hypo_06_plot <-
-  hypo_06 %>% 
-  ggplot(aes(as.factor(yes_elec), pledge_USD)) +
-  geom_jitter(alpha = 0.5, color = yellow_shades[[3]]) +
-  geom_boxplot(alpha = 0.75)
+  hypo_06_plot_tab %>% 
+  ggplot(aes(as.factor(yes_elec), median)) +
+  geom_bar(aes(fill = as.factor(yes_elec)), stat = "identity", show.legend = FALSE) +
+  geom_errorbar(
+    aes(ymin = median - se, ymax = median + se),
+    width = 0.1
+  ) 
 
 hypo_06_corr_matrix <-
-  cor(hypo_06, use = "complete.obs")
+  cor(hypo_06 %>% select(-pledge_USD), use = "complete.obs")
 
 hypo_06_corr_plot <-
   ggcorrplot::ggcorrplot(
