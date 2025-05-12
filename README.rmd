@@ -443,14 +443,6 @@ Additionally, inflation shows a weak negative correlation with pledges. Even tho
 
 When examining total investment levels, often viewed as an indicator of domestic confidence in future growth, we observe no significant correlation with donor pledges. This suggests that domestic economic optimism does not necessarily translate into higher international aid commitments to The Global Fund. Likewise, the negative relationship between pledges and trade volume suggests that increasing trade activity is not a strong driver of donor generosity. Many emerging economies with rapidly rising trade integration are not primary contributors to The Global Fund, while traditional donors with slower trade growth possess greater fiscal capacity to fund the partnership.
 
-In sum, across all key macroeconomic indicators analyzed, we observe weak to no correlations with Global Fund pledges. This suggests that while economic conditions may shape the broader fiscal landscape, they are not strong predictors of donor behavior toward TGF. Indeed, there is some historical evidence supporting this. During the 2008 Global Financial Crisis, while many governments cut or postponed some domestic spending, aggregate levels of ODA held relatively steady. Donor commitments to The Global Fund, in fact, continued to rise in nominal terms between 2007 and 2016 (see Figure 4). This resilience indicates that global health funding may be shielded, at least in the short term, from economic shocks.
-
-There are multiple reasons for this. Many donor governments treat global health as a moral or diplomatic priority, and multilateral platforms like The Global Fund encourage burden-sharing and peer accountability. As a result, a country might sustain or increase pledges based on prior rounds of funding even during periods of economic weakness to maintain international credibility or signal leadership in global health.
-
-This underscores the importance of political context in shaping the level of funding The Global Fund receives. Though political dynamics are inherently fluid and difficult to quantify, we will try to examine their potential influence through a set of commonly held views. A common belief is that left-leaning governments, being more aligned with humanitarian values, are more inclined to support international aid. Similarly, commentators often express concern when replenishments coincide with election periods in key donor countries, fearing that governments may prioritize re-election campaigns over global health commitments. On the surface, both assumptions seem reasonable.
-
-To explore these dynamics, we compiled historical data on the ideological orientation of major democratic donors to The Global Fund, drawing from four key databases. The Chapel Hill Expert Survey (CHES) provides expert assessments of party positions across Europe; PAGED tracks party participation in executive office globally since 1990; ParlGov links information on elections, political parties, and governments in parliamentary systems; and the Manifesto Project analyzes party manifestos to quantify ideological positions and policy priorities over time.
-
 ```{r plot 10, fig.height = 9.5}
 hypo_03_plot +
   plot_frame + 
@@ -483,9 +475,21 @@ hypo_04_plot +
   theme(axis.title.x = element_text(margin = margin(t = 10)))
 ```
 
-Surprisingly, the data indicates a weak but positive relationship between the ideological placement of donor governments and their financial pledges to The Global Fund. This suggests that, on average, right-leaning governments tend to pledge slightly more than left-leaning ones. However, the weakness of this correlation implies that ideology alone is not a strong or reliable predictor of how much a government will contribute.
+In sum, across all key macroeconomic indicators analyzed, we observe weak to no correlations with Global Fund pledges. This suggests that while economic conditions may shape the broader fiscal landscape, they are not strong predictors of donor behavior toward TGF. Indeed, there is some historical evidence supporting this. During the 2008 Global Financial Crisis, while many governments cut or postponed some domestic spending, aggregate levels of ODA held relatively steady. Donor commitments to The Global Fund, in fact, continued to rise in nominal terms between 2007 and 2016 (see Figure 4). This resilience indicates that global health funding may be shielded, at least in the short term, from economic shocks.
 
-In addition, the data shows that the median pledge decreases significantly, from \$184 million to \$99.4 million, when replenishment periods overlap with national elections. While this correlation is also weak, the trend may reflect several plausible dynamics: elections can cause administrative delays, lead to fiscal caution as governments avoid new spending commitments, and trigger shifts in political attention toward domestic priorities that resonate more strongly with voters. These factors may collectively reduce the bandwidth and willingness of governments to make ambitious international pledges during electoral periods.
+There are multiple reasons for this. Many donor governments treat global health as a moral or diplomatic priority, and multilateral platforms like The Global Fund encourage burden-sharing and peer accountability. As a result, a country might sustain or increase pledges based on prior rounds of funding even during periods of economic weakness to maintain international credibility or signal leadership in global health.
+
+This underscores the importance of political context in shaping the level of funding The Global Fund receives. Though political dynamics are inherently fluid and difficult to quantify, we will try to examine their potential influence through a set of commonly held views. A common belief is that left-leaning governments, being more aligned with humanitarian values, are more inclined to support international aid. A notable example is the Biden administration, whose progressive agenda included a strong commitment to global health, and to The Global Fund in particular. Similarly, commentators often express concern when replenishments coincide with election periods in key donor countries, fearing that governments may prioritize re-election campaigns over global health commitments. On the surface, both assumptions seem reasonable.
+
+To explore these dynamics, we compiled historical data on the ideological orientation of major democratic donors to The Global Fund, drawing from four key databases. The Chapel Hill Expert Survey (CHES) provides expert assessments of party positions across Europe; PAGED tracks party participation in executive office globally since 1990; ParlGov links information on elections, political parties, and governments in parliamentary systems; and the Manifesto Project analyzes party manifestos to quantify ideological positions and policy priorities over time.
+
+Surprisingly, the data indicates a weak but positive relationship between the ideological placement of donor governments and their financial pledges to The Global Fund. This suggests that right-leaning governments tend to pledge slightly more slightly more on average, though not consistently or reliably, than left-leaning ones. Economic ideology appears to correlate more strongly with pledges than overall political ideology, implying that funding levels may be more closely tied to governments’ economic priorities than their overall political orientation. However, the weakness of these correlations means that ideology alone is not a strong or consistent predictor of donor behavior.
+
+Indeed, historical examples challenge conventional assumptions. It was the conservative Republican Bush administration that launched the President’s Emergency Plan for AIDS Relief (PEPFAR), one of the largest bilateral health initiatives in history. Many right-leaning governments in the 2000s and 2010s actively supported the liberal, rules-based international order that fostered multilateral initiatives like The Global Fund, though this was equally true for many left-leaning governments. In fact, The Global Fund has traditionally enjoyed broad bipartisan support. For example, the first Trump administration not only maintained support for the Fund but increased the U.S. contribution in 2019. More broadly, parliamentary democracies like Germany or the UK can blur ideological lines as budget and foreign aid decisions might reflect consensus rather than partisan ideology, further weakening the ideological link.
+
+These examples suggest that a simplistic left-to-right ideological framework may not offer a reliable heuristic for predicting public sector pledges. Political ideologies are fluid and evolve over time. In the current landscape, we have even seen former champions of multilateralism, like the U.S. Republican Party, take a more adversarial stance toward the liberal international order they once helped shape.
+
+A more useful political factor influencing contributions to The Global Fund may be the timing of domestic elections. The data shows that the median pledge decreases significantly, from \$184 million to \$99 million, when replenishment periods overlap with national elections. While this correlation is also weak, the trend may reflect several plausible dynamics: elections can cause administrative delays, lead to fiscal caution as governments avoid new spending commitments, and trigger shifts in political attention toward domestic
 
 ```{r plot 12, warning = FALSE}
 hypo_05_plot +
@@ -520,7 +524,7 @@ hypo_05_plot +
   )
 ```
 
-```{r plot 13, warning = FALSE}
+```{r plot 13, warning = FALSE, fig.height = 4.25}
 hypo_06_plot +
   plot_frame_bar +
   labs(title = "Figure 13:",
@@ -529,26 +533,33 @@ hypo_06_plot +
   ) +
   scale_x_discrete(
     labels = c("No Election", "Election")
-    ) +
+  ) +
   scale_y_continuous(
     labels = scales::dollar_format(suffix = " mill")
   ) +
   scale_fill_manual(
-    values = c(yellow_shades[[3]], yellow_shades[[1]])
+    values = c(yellow_shades[[3]], yellow_shades[[2]])
   ) +
   geom_label(
     data = hypo_06_plot_tab %>% filter(yes_elec == 0),
-    aes(x = 1, y = 184, label = "$184 Mill"),
+    aes(x = 1, y = 184, label = "$184 mill"),
     family = "Arial", size = 3.5, fontface = "bold"
   ) +
   geom_label(
     data = hypo_06_plot_tab %>% filter(yes_elec == 1),
-    aes(x = 2, y = 99, label = "$99 Mill"),
+    aes(x = 2, y = 99, label = "$99 mill"),
     family = "Arial", size = 3.5, fontface = "bold"
-  ) 
+  ) +
+  theme(
+    axis.title.y = element_text(margin = margin(r = 15))
+  )
 ```
 
-So far, the analysis suggests that some of our assumptions may not hold up under scrutiny. However, to rigorously test these relationships, we need to take the analysis a step further by modeling them mathematically through regression analysis. This approach allows us to assess the influence of individual factors, such as fiscal metrics, political ideology, or economic conditions, while controlling for other variables simultaneously. In doing so, we can better isolate the specific impact of each factor on financial contributions to The Global Fund.
+priorities that resonate more strongly with voters. These factors may collectively reduce the bandwidth and willingness of governments to make ambitious international pledges during electoral periods.
+
+So far, the analysis suggests that several commonly held assumptions do not fully hold up under scrutiny. While pledges to The Global Fund are strongly correlated with overall ODA levels and with contributions to other multilateral development organizations, and while domestic elections in donor countries appear to have a dampening effect on pledges, we find little evidence that a donor’s fiscal or macroeconomic outlook is strongly associated with higher contributions. Likewise, widely held beliefs about the influence of political ideology on donor generosity have also been called into question.
+
+Nonetheless, to rigorously test these relationships, we need to take the analysis a step further by modeling them mathematically through regression analysis. This approach allows us to assess the influence of individual factors, such as fiscal metrics, political ideology, or economic conditions, while controlling for other variables simultaneously. In doing so, we can better isolate the specific impact of each factor on financial contributions to The Global Fund.
 
 Regression analysis also enables us to evaluate the reliability of our observations by testing their statistical significance and goodness of fit. This helps us determine whether the relationships we have identified are likely to hold beyond past replenishment outcomes, making them applicable to future replenishments. Finally, assuming we are able to build a robust model that captures the key predictors of public sector pledges, we may even be able to generate informed projections of future funding outcomes.
 

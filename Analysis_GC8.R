@@ -1063,7 +1063,7 @@ plot_frame_bar <-
     plot.caption.position = "plot",
     plot.caption = element_text(hjust = 0, margin = margin(t = 15, r = 0, b = 0, l = 0), size = 9),
     panel.grid = element_blank(),
-    text = element_text(size = 12.5, family = "Arial")
+    text = element_text(size = 12.5, family = "Arial", color = "black")
   ) 
 
 plot_frame <- 
@@ -1075,7 +1075,7 @@ plot_frame <-
     panel.grid = element_blank(),
     axis.line = element_line(linewidth = 0.15),
     axis.ticks = element_line(linewidth = 0.15),
-    text = element_text(size = 12.5, family = "Arial")
+    text = element_text(size = 12.5, family = "Arial", color = "black")
   ) 
 
 # Test Hypothesis 1
@@ -1301,15 +1301,24 @@ hypo_06_plot_tab <-
 
 hypo_06_plot <-
   hypo_06_plot_tab %>% 
-  ggplot(aes(as.factor(yes_elec), median)) +
-  geom_bar(aes(fill = as.factor(yes_elec)), stat = "identity", show.legend = FALSE) +
+  ggplot(aes(x = as.factor(yes_elec), y = median)) +
+  geom_bar(
+    aes(fill = as.factor(yes_elec)), 
+    stat = "identity", show.legend = FALSE, width = 0.5
+    ) +
   geom_errorbar(
+    data = hypo_06_plot_tab %>% filter(yes_elec == 1),
     aes(ymin = median - se, ymax = median + se),
-    width = 0.1
+    width = 0.05, linewidth = 0.25
+  ) +
+  geom_errorbar(
+    data = hypo_06_plot_tab %>% filter(yes_elec == 0),
+    aes(ymin = median - se, ymax = median + se),
+    width = 0.05, linewidth = 0.25
   ) 
 
 hypo_06_corr_matrix <-
-  cor(hypo_06 %>% select(-pledge_USD), use = "complete.obs")
+  cor(hypo_06 %>% select(-pledge_USD), use = "complete.obs", method = "spearman")
 
 hypo_06_corr_plot <-
   ggcorrplot::ggcorrplot(
