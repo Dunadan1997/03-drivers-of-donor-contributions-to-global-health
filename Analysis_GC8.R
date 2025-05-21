@@ -2,7 +2,6 @@
 # Author: Bruno Alves de Carvalho
 # Status: ongoing
 
-
 # Set up ------------------------------------------------------------------
 
 # Load packages
@@ -982,7 +981,7 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
     )
 
 
-# Data Analysis -----------------------------------------------------------
+# Descriptive Data Analysis -----------------------------------------------------------
 
 # Set up visuals
 blue <- "#2E4DF9"
@@ -1084,9 +1083,9 @@ hypo_01 <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>%
   filter(donor_type == "public") %>% 
-  select(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI) %>% 
+  select(pledge_USD_cp, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI) %>% 
   mutate(across(
-    c(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI),
+    c(pledge_USD_cp, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI),
     ~ ifelse(. > 0, log(.), NA)
     ))
 
@@ -1102,7 +1101,7 @@ hypo_01_plot <-
          ) %>% 
   filter(pledge_orgs > 0) %>% 
   mutate(orgs = factor(orgs, levels = c("GCF", "GPE", "CEPI", "GAVI", "GEF", "ADF", "AfDf", "IDA", "IFAD"))) %>% 
-  ggplot(aes(pledge_orgs, pledge_USD, color = orgs)) + 
+  ggplot(aes(pledge_orgs, pledge_USD_cp, color = orgs)) + 
   geom_point(alpha = 0.15) + 
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ org_type)
@@ -1327,4 +1326,39 @@ hypo_06_corr_plot <-
     colors = c(red, "white", blue)
   )
 
+#
 
+
+
+# Predictive Data Analysis ------------------------------------------------
+  # Model considerations:
+    # create variable combining pledges from all multilateral funds (average or median pledge), will still be highly correlated with ODA disbursements
+    # standardize years (e.g. 1 to 22)
+    # use fixed effects from countries and years, and use robust SEs to account for auto-correlation of error terms
+
+list_data$data[[which(list_data$source == "FRED")]] <-
+  list_data %>% 
+  filter(source == "FRED") %>% 
+  pluck(2,1) %>% 
+  mutate(observation_date = year(observation_date)) %>% 
+  rename(year = observation_date, price_deflator = GDPDEF_NBD20220101)
+
+list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  left_join(
+    list_data %>% 
+      filter(source == "FRED") %>%
+      pluck(2,1), 
+    by = "year") %>% 
+  mutate(
+    pledge_USD_cp = (pledge_USD / price_deflator) * 100
+    )
+
+
+# Model Selection
+  # Forward stepwise selection (if computationally possible, then Best Subset Selection)
+
+# Model Assessment
+  # K-Fold Cross-Validation, with one-standard-error rule when assessing the bess model

@@ -2,11 +2,7 @@
 title: "Replenishing Hope: Political and Economic Drivers of Public Sector Support for The Global Fund"
 date: 2025-03-23
 author: "Bruno Alves de Carvalho"
-output:
-  pdf_document:
-#    latex_engine: xelatex
-#    includes:
-#      in_header: spacing.tex
+output: pdf_document
 mainfont: "Arial"
 ---
 
@@ -559,7 +555,7 @@ priorities that resonate more strongly with voters. These factors may collective
 
 So far, the analysis suggests that several commonly held assumptions do not fully hold up under scrutiny. While pledges to The Global Fund are strongly correlated with overall ODA levels and with contributions to other multilateral development organizations, and while domestic elections in donor countries appear to have a dampening effect on pledges, we find little evidence that a donor’s fiscal or macroeconomic outlook is strongly associated with higher contributions. Likewise, widely held beliefs about the influence of political ideology on donor generosity have also been called into question.
 
-Nonetheless, to rigorously test these relationships, we need to take the analysis a step further by modeling them mathematically through regression analysis. This approach allows us to assess the influence of individual factors, such as fiscal metrics, political ideology, or economic conditions, while controlling for other variables simultaneously. In doing so, we can better isolate the specific impact of each factor on financial contributions to The Global Fund.
+Nonetheless, to rigorously test these relationships, we need to take the analysis a step further by modeling them mathematically through regression analysis. This approach allows us to assess the influence of individual factors, such as fiscal metrics, political ideology, or economic conditions, while controlling for other variables simultaneously. In doing so, we can better isolate the specific impact of each factor and identify the drivers of financial contributions to The Global Fund.
 
 Regression analysis also enables us to evaluate the reliability of our observations by testing their statistical significance and goodness of fit. This helps us determine whether the relationships we have identified are likely to hold beyond past replenishment outcomes, making them applicable to future replenishments. Finally, assuming we are able to build a robust model that captures the key predictors of public sector pledges, we may even be able to generate informed projections of future funding outcomes.
 
