@@ -930,23 +930,7 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
         is.na(lrgen_ches), lrgen_mp, ifelse(
           is.na(lrgen_mp), lrgen_ches, (lrgen_ches + lrgen_mp) / 2
           )
-        ),
-    lr_all = 
-      ifelse(
-        is.na(lrgen_ches) & is.na(lrgen_mp) & is.na(lrecon_ches), NA, ifelse(
-          is.na(lrgen_ches) & is.na(lrgen_mp), lrecon_ches, ifelse(
-            is.na(lrgen_ches) & is.na(lrecon_ches), lrgen_mp, ifelse(
-              is.na(lrgen_mp) & is.na(lrecon_ches), lrgen_ches, ifelse(
-                is.na(lrgen_ches), (lrgen_mp + lrecon_ches) / 2, ifelse(
-                  is.na(lrgen_mp), (lrgen_ches + lrecon_ches) / 2, ifelse(
-                    is.na(lrecon_ches), (lrgen_ches + lrgen_mp) / 2, (lrgen_ches + lrgen_mp + lrecon_ches) / 3
-                  )
-                )
-              )
-            )
-          )
         )
-      )
     ) 
 
 # Create grouping variables
@@ -1083,9 +1067,9 @@ hypo_01 <-
   filter(source == "FULL_FACTORS") %>% 
   pluck(2,1) %>%
   filter(donor_type == "public") %>% 
-  select(pledge_USD_cp, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI) %>% 
+  select(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI) %>% 
   mutate(across(
-    c(pledge_USD_cp, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI),
+    c(pledge_USD, GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI),
     ~ ifelse(. > 0, log(.), NA)
     ))
 
@@ -1101,7 +1085,7 @@ hypo_01_plot <-
          ) %>% 
   filter(pledge_orgs > 0) %>% 
   mutate(orgs = factor(orgs, levels = c("GCF", "GPE", "CEPI", "GAVI", "GEF", "ADF", "AfDf", "IDA", "IFAD"))) %>% 
-  ggplot(aes(pledge_orgs, pledge_USD_cp, color = orgs)) + 
+  ggplot(aes(pledge_orgs, pledge_USD, color = orgs)) + 
   geom_point(alpha = 0.15) + 
   geom_smooth(method = "lm", se = F) + 
   facet_wrap(~ org_type)
@@ -1246,8 +1230,8 @@ hypo_05_plot_tab <-
   mutate(
     lr_scale = factor(
       lr_scale, 
-      levels = c("lrgen_all", "lrecon_ches", "lrgen_ches", "lrgen_mp", "lr_all"),
-      labels = c("Overall\nIdeological Position", "Economic\nIdeological Position", "lrgen_ches", "lrgen_mp", "lr_all"), 
+      levels = c("lrgen_all", "lrecon_ches", "lrgen_ches", "lrgen_mp"),
+      labels = c("Overall\nIdeological Position", "Economic\nIdeological Position", "lrgen_ches", "lrgen_mp"), 
       )
   )
 
@@ -1326,9 +1310,6 @@ hypo_06_corr_plot <-
     colors = c(red, "white", blue)
   )
 
-#
-
-
 
 # Predictive Data Analysis ------------------------------------------------
   # Model considerations:
@@ -1354,8 +1335,115 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
     by = "year") %>% 
   mutate(
     pledge_USD_cp = (pledge_USD / price_deflator) * 100
-    )
+  )
 
+predict.regsubsets <- function(object, newdata , id, ...) {
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object, id = id)
+  xvars <- names(coefi)
+  mat[, xvars] %*% coefi
+}
+
+# create dummy variables for each country and check data type for all variables, try to fill in missing values where possible
+test <- 
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  group_by(year, donor_name) %>% 
+  mutate(
+    other_orgs = sum(GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI, na.rm = TRUE) / 9,
+    pledge_USD_log = log(pledge_USD),
+    oda_spent_log = log(oda_spent),
+    gdp_per_cap_cp_log_rllavg02 = log(gdp_per_cap_cp_rllavg02),
+    lr_all = mean(sum(lrgen_ches, lrgen_mp, lrecon_ches, na.rm = TRUE) / 3),
+    year_std = year-2000
+    ) %>% 
+  ungroup() %>% 
+  select(
+    pledge_USD_log, # outcome variable
+    year_std, # control variables
+    other_orgs, oda_spent_log, # aid financing variables
+    ends_with("rllavg01"), # fiscal variables
+    ends_with("rllavg02"), # macroeconomic variables
+    lr_all, yes_elec # political variables
+    ) %>%
+  select(-fsclblc_rllavg01, -prmryfsclblc_rllavg01, -adjfsclblc_rllavg01,
+         -expdtr_rllavg01,  -grsdbt_rllavg01, -other_orgs,
+         -exports_vl_rllavg02, -imports_vl_rllavg02, -gdp_cp_rllavg02,  
+         -Total_investment_rllavg02, -gdp_per_cap_cp_rllavg02) %>% 
+  na.omit()
+test <- 
+  test %>% 
+  bind_cols(
+    model.matrix(~ donor_name, data = test)[, -1]
+    ) %>% 
+  select(-donor_name)
+
+k <- 5
+n <- nrow(test)
+v <- ncol(test)-1
+set.seed(1)
+folds <- sample(rep(1:k, length = n))
+cv.errors <- matrix(NA, k, v, dimnames = list(NULL, paste(1:v)))
+
+which_models <- as.numeric(rownames(summary(best.fit)$which))
+
+# distinguish train and test
+for (j in 1:k) {
+  best.fit <- regsubsets(pledge_USD_log ~ ., data = test[folds != j, ], nvmax = v, method = "forward")
+  model_sizes <- as.numeric(rownames(summary(best.fit)$which))
+  
+  for (m in seq_along(model_sizes)) {
+    id_val <- model_sizes[m]
+    pred <- predict(best.fit, test[folds == j, ], id = id_val)
+    cv.errors[j, m] <- mean((test$pledge_USD_log[folds == j] - pred)^2)
+  }
+}
+
+# train
+reg.summary <- summary(best.fit)
+par(mfrow = c(1, 1))
+plot(reg.summary$adjr2, type = "l")
+plot(reg.summary$rss, type = "l")
+which.max(reg.summary$adjr2)
+which.min(reg.summary$rss)
+which.min(reg.summary$cp)
+best_vars <- names(coef(best.fit, id = 10))[-1]
+best_formula <- as.formula(
+  paste("pledge_USD_log ~", paste(best_vars, collapse = " + "))
+)
+lm_best <- lm(best_formula, data = test)
+vif(lm_best)
+summary(lm_best)
+
+# test
+mean.cv.errors <- apply(cv.errors, 2, mean)
+se.cv.errors <- apply(cv.errors, 2, sd) / sqrt(k)
+par(mfrow = c(1, 1))
+plot(mean.cv.errors, type = "b")
+reg.best <- regsubsets(pledge_USD_log ~ ., data = test, nvmax = v)
+model.best <- mean.cv.errors[mean.cv.errors <= (se.cv.errors[which.min(mean.cv.errors)] + min(mean.cv.errors, na.rm = T))][1] %>% names() %>% as.numeric()
+round(coef(reg.best, 36), 2)
+best_vars <- names(coef(reg.best, id = which.min(mean.cv.errors)))[-1]
+best_formula <- as.formula(
+  paste("pledge_USD_log ~", paste(best_vars, collapse = " + "))
+)
+lm_best <- lm(best_formula, data = test)
+vif(lm_best)
+
+for (j in 1:k) {
+  best.fit <- regsubsets(pledge_USD ~ .,
+                         data = test[folds != j,],
+                         nvmax = v)
+  n_models <- ncol(summary(best.fit)$which)
+  for (i in 1:n_models) {
+    pred <- predict(best.fit, test[folds == j, ], id = i)
+    cv.errors[j, i] <-
+      mean((test$pledge_USD[folds == j] - pred)^2)
+  }
+}
 
 # Model Selection
   # Forward stepwise selection (if computationally possible, then Best Subset Selection)
