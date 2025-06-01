@@ -1337,13 +1337,8 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
     pledge_USD_cp = (pledge_USD / price_deflator) * 100
   )
 
-predict.regsubsets <- function(object, newdata , id, ...) {
-  form <- as.formula(object$call[[2]])
-  mat <- model.matrix(form, newdata)
-  coefi <- coef(object, id = id)
-  xvars <- names(coefi)
-  mat[, xvars] %*% coefi
-}
+library(leaps)
+library(glmnet)
 
 # create dummy variables for each country and check data type for all variables, try to fill in missing values where possible
 test <- 
@@ -1361,25 +1356,68 @@ test <-
     year_std = year-2000
     ) %>% 
   ungroup() %>% 
+  bind_cols(
+    model.matrix(~ donor_name, data = .)[, -1]
+  ) %>% 
   select(
     pledge_USD_log, # outcome variable
-    year_std, # control variables
+    year_std, starts_with("donor_name"), # control variables
     other_orgs, oda_spent_log, # aid financing variables
     ends_with("rllavg01"), # fiscal variables
     ends_with("rllavg02"), # macroeconomic variables
-    lr_all, yes_elec # political variables
+    lr_all, yes_elec, # political variables
+    -gdp_per_cap_cp_rllavg02, -donor_name # Remove unnecessary variables
     ) %>%
-  select(-fsclblc_rllavg01, -prmryfsclblc_rllavg01, -adjfsclblc_rllavg01,
-         -expdtr_rllavg01,  -grsdbt_rllavg01, -other_orgs,
-         -exports_vl_rllavg02, -imports_vl_rllavg02, -gdp_cp_rllavg02,  
-         -Total_investment_rllavg02, -gdp_per_cap_cp_rllavg02) %>% 
   na.omit()
-test <- 
-  test %>% 
-  bind_cols(
-    model.matrix(~ donor_name, data = test)[, -1]
-    ) %>% 
-  select(-donor_name)
+
+penalty <- rep(1, ncol(test))[-1]
+penalty[1:84] <- 0
+x <- model.matrix(pledge_USD_log ~ ., test)[, -1]
+y <- test$pledge_USD_log
+set.seed(1)
+train <- sample(1:nrow(x), nrow(x)/2)
+test_df <- (-train)
+y.test <- y[test_df]
+grid <- 10^seq(10, -2, length = 100)
+
+
+
+lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid, thresh = 1e-12)
+plot(lasso.mod)
+set.seed(1)
+cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
+plot(cv.out)
+bestlam <- cv.out$lambda.min
+lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[test_df, ])
+mean((lasso.pred - y.test)^2)
+lm.pred1 <- predict(lasso.mod, s = 0, newx = x[test_df, ], exact = T, x = x[train, ], y = y[train])
+mean((lm.pred1 - y.test)^2)
+out <- glmnet(x, y, alpha = 1, lambda = grid)
+lasso.coef <- predict(out, type = "coefficients", s = bestlam)[1:45, ]
+round(lasso.coef[lasso.coef != 0], 5)
+# Identify selected variables (excluding the intercept)
+selected_vars <- which(predict(out, type = "coefficients", s = bestlam) != 0)[-1]
+# Get names of selected variables
+selected_names <- names(lasso.coef[selected_vars])  # +1 to skip intercept
+# Convert x matrix to a data frame for OLS
+x_df <- as_tibble(x[train, ])
+x_selected <- x_df[, selected_names, drop = FALSE]
+# Fit post-LASSO OLS
+post_lasso_ols1 <- lm(y[train] ~ ., data = x_selected)
+# View summary
+summary(post_lasso_ols1)
+# Fit post-LASSO OLS with all control variables
+post_lasso_ols2 <- lm(y[train] ~ ., data = x_df[train, ] %>% select(year_std, starts_with("donor_name"), other_orgs, oda_spent_log, adjfsclblc_rllavg01, inflation_rt_rllavg02, yes_elec))
+summary(post_lasso_ols2)
+
+#### archive ####
+predict.regsubsets <- function(object, newdata , id, ...) {
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object, id = id)
+  xvars <- names(coefi)
+  mat[, xvars] %*% coefi
+}
 
 k <- 5
 n <- nrow(test)
