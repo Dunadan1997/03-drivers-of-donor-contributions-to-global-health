@@ -1433,14 +1433,14 @@ set.seed(1)
 cv.ridge <- 
   cv.glmnet(x[train, ][, as.logical(penalty)], y[train], alpha = 0)
 plot(cv.ridge)
-bestlam <- 
+bestlam_ridge <- 
   cv.ridge$lambda.min
 
 # Lasso: Model selection and Assessment (select best tuning parameter first on training data)
 cv.lasso <- 
   cv.glmnet(x[train, ][, as.logical(penalty)], y[train], alpha = 1)
 plot(cv.lasso)
-bestlam <- 
+bestlam_lasso <- 
   cv.lasso$lambda.min
 
 
