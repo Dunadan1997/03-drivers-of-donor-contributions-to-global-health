@@ -1370,15 +1370,78 @@ test <-
     ) %>%
   na.omit()
 
-penalty <- rep(1, ncol(test))[-1]
-penalty[1:84] <- 0
-x <- model.matrix(pledge_USD_log ~ ., test)[, -1]
-y <- test$pledge_USD_log
+
 set.seed(1)
-train <- sample(1:nrow(x), nrow(x)/2)
-test_df <- (-train)
-y.test <- y[test_df]
-grid <- 10^seq(10, -2, length = 100)
+k <- 10
+n <- nrow(test)
+vars <- which(!startsWith(colnames(test), "donor_name") & !startsWith(colnames(test), "year"))
+n_vars <- length(vars)-1
+folds <- sample(rep(1:k, length = n))
+cv.errors <- matrix(NA, k, n_vars, dimnames = list(NULL, paste(1:n_vars)))
+
+
+predict.regsubsets <- function(object, newdata , id, ...) {
+  form <- as.formula(object$call[[2]])
+  mat <- model.matrix(form, newdata)
+  coefi <- coef(object, id = id)
+  xvars <- names(coefi)
+  mat[, xvars] %*% coefi
+}
+
+# OLS: Model selection and Assessment
+for (j in 1:k) {
+  best.fit <- regfit_full <- regsubsets(
+    pledge_USD_log ~ ., 
+    data = test[vars][folds != j, ], 
+    nvmax = sum(penalty[penalty == 1])
+  )
+  model_sizes <- 
+    as.numeric(rownames(summary(best.fit)$which))
+  
+  for (i in seq_along(model_sizes)) {
+    id_val <- 
+      model_sizes[i]
+    pred <- 
+      predict(best.fit, test[folds == j, ], id = id_val)
+    cv.errors[j, i] <- 
+      mean((test$pledge_USD_log[folds == j] - pred)^2)
+  }
+}
+
+mean.cv.erros <- apply(cv.errors, 2, mean)
+mean.cv.erros
+par(mfrow = c(1,1))
+plot(mean.cv.erros, type = "b")
+
+# Ridge: Model selection and Assessment (select best tuning parameter first on training data)
+  # not clear whether I need to select variables first and then select the best tuning parameter, or vice-versa
+x <- 
+  model.matrix(pledge_USD_log ~ ., test)[, -1]
+y <- 
+  test$pledge_USD_log
+penalty <- 
+  rep(1, ncol(test))[-1]
+penalty[which(startsWith(colnames(test[-1]), "donor_name") | startsWith(colnames(test[-1]), "year"))] <- 
+  0
+train <- 
+  sample(1:nrow(x), nrow(x)/2)
+x.test <- 
+  (-train)
+y.test <- 
+  y[x.test]
+set.seed(1)
+cv.ridge <- 
+  cv.glmnet(x[train, ][, as.logical(penalty)], y[train], alpha = 0)
+plot(cv.ridge)
+bestlam <- 
+  cv.ridge$lambda.min
+
+# Lasso: Model selection and Assessment (select best tuning parameter first on training data)
+cv.lasso <- 
+  cv.glmnet(x[train, ][, as.logical(penalty)], y[train], alpha = 1)
+plot(cv.lasso)
+bestlam <- 
+  cv.lasso$lambda.min
 
 
 
@@ -1411,13 +1474,10 @@ post_lasso_ols2 <- lm(y[train] ~ ., data = x_df[train, ] %>% select(year_std, st
 summary(post_lasso_ols2)
 
 #### archive ####
-predict.regsubsets <- function(object, newdata , id, ...) {
-  form <- as.formula(object$call[[2]])
-  mat <- model.matrix(form, newdata)
-  coefi <- coef(object, id = id)
-  xvars <- names(coefi)
-  mat[, xvars] %*% coefi
-}
+train <- sample(1:nrow(x), nrow(x)/2)
+x.test <- (-train)
+y.test <- y[x.test]
+grid <- 10^seq(10, -2, length = 100)
 
 k <- 5
 n <- nrow(test)
