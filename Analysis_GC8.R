@@ -1348,7 +1348,8 @@ test <-
   filter(donor_type == "public") %>% 
   group_by(year, donor_name) %>% 
   mutate(
-    other_orgs = sum(GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI, na.rm = TRUE) / 9,
+    other_orgs_log = sum(GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI, na.rm = TRUE) / 9,
+      other_orgs_log = ifelse(is.infinite(other_orgs_log), 0, other_orgs_log),
     pledge_USD_log = log(pledge_USD),
     oda_spent_log = log(oda_spent),
     gdp_per_cap_cp_log_rllavg02 = log(gdp_per_cap_cp_rllavg02),
@@ -1356,13 +1357,14 @@ test <-
     year_std = year-2000
     ) %>% 
   ungroup() %>% 
+  filter(lr_all != 0) %>% 
   bind_cols(
     model.matrix(~ donor_name, data = .)[, -1]
   ) %>% 
   select(
     pledge_USD_log, # outcome variable
     year_std, starts_with("donor_name"), # control variables
-    other_orgs, oda_spent_log, # aid financing variables
+    other_orgs_log, oda_spent_log, # aid financing variables
     ends_with("rllavg01"), # fiscal variables
     ends_with("rllavg02"), # macroeconomic variables
     lr_all, yes_elec, # political variables
@@ -1372,7 +1374,7 @@ test <-
 
 
 set.seed(1)
-k <- 10
+k <- 5
 n <- nrow(test)
 vars <- which(!startsWith(colnames(test), "donor_name") & !startsWith(colnames(test), "year"))
 n_vars <- length(vars)-1
@@ -1407,14 +1409,19 @@ for (j in 1:k) {
       mean((test$pledge_USD_log[folds == j] - pred)^2)
   }
 }
-
 mean.cv.erros <- apply(cv.errors, 2, mean)
 mean.cv.erros
+min(mean.cv.erros)
 par(mfrow = c(1,1))
 plot(mean.cv.erros, type = "b")
+reg.best <- regsubsets(pledge_USD_log ~ ., data = test[c(TRUE, as.logical(penalty))], nvmax = 49)
+coef(reg.best, 2)
+lm.mod <- lm(pledge_USD_log ~ ., data = test %>% select(pledge_USD_log, other_orgs_log, oda_spent_log, starts_with("donor_name"), year_std))
+summary(lm.mod)
 
 # Ridge: Model selection and Assessment (select best tuning parameter first on training data)
   # not clear whether I need to select variables first and then select the best tuning parameter, or vice-versa
+set.seed(1)
 x <- 
   model.matrix(pledge_USD_log ~ ., test)[, -1]
 y <- 
@@ -1429,20 +1436,64 @@ x.test <-
   (-train)
 y.test <- 
   y[x.test]
-set.seed(1)
+set.seed(2)
+grid <- 
+  10^seq(10, -2, length = 100)
 cv.ridge <- 
-  cv.glmnet(x[train, ][, as.logical(penalty)], y[train], alpha = 0)
+  cv.glmnet(x[train, ], y[train], alpha = 0, k = 5, penalty.factor = penalty)
 plot(cv.ridge)
 bestlam_ridge <- 
   cv.ridge$lambda.min
+ridge.mod.train <- 
+  glmnet(x[train, ], y[train], alpha = 0, penalty.factor = penalty)
+ridge.pred.test <- 
+  predict(ridge.mod.train, s = bestlam_ridge, newx = x[x.test, ], penalty.factor = penalty)
+mean(((ridge.pred.test - y.test)^2))
+ridge.mod <- 
+  glmnet(x, y, alpha = 0, penalty.factor = penalty)
+ridge.pred <- 
+  predict(ridge.mod, s = bestlam_ridge, type = "coefficients") %>% round(.,2)
 
 # Lasso: Model selection and Assessment (select best tuning parameter first on training data)
+set.seed(3)
 cv.lasso <- 
-  cv.glmnet(x[train, ][, as.logical(penalty)], y[train], alpha = 1)
+  cv.glmnet(x[train, ], y[train], alpha = 1, k = 5, penalty.factor = penalty)
 plot(cv.lasso)
 bestlam_lasso <- 
   cv.lasso$lambda.min
+lasso.mod.train <- 
+  glmnet(x[train, ], y[train], alpha = 1, penalty.factor = penalty)
+lasso.pred.test <- 
+  predict(lasso.mod.train, s = bestlam_lasso, newx = x[x.test, ], penalty.factor = penalty)
+mean(((lasso.pred.test - y.test)^2))
+lasso.mod <- 
+  glmnet(x, y, alpha = 1, penalty.factor = penalty)
+lasso.pred <- 
+  predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:49, ]
+lasso.pred[lasso.pred != 0]
+lm.mod2 <- lm(
+  pledge_USD_log ~ ., 
+  data = test %>% select(pledge_USD_log, other_orgs_log, oda_spent_log, lr_all, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std)
+  )
+summary(lm.mod2)
 
+# Net Elastic: Model selection and Assessment (select best tuning parameter first on training data)
+set.seed(5)
+cv.enet <-
+  cv.glmnet(x[train, ], y[train], alpha = 0.5, k = 5, penalty.factor = penalty)
+plot(cv.enet)
+bestlam_enet <- 
+  cv.enet$lambda.min
+enet.mod.train <- 
+  glmnet(x[train, ], y[train], alpha = 0.5, penalty.factor = penalty)
+enet.pred.test <- 
+  predict(enet.mod.train, s = bestlam_enet, newx = x[x.test, ], penalty.factor = penalty)
+mean(((enet.pred.test - y.test)^2))
+enet.mod <- 
+  glmnet(x, y, alpha = 0.5, penalty.factor = penalty)
+enet.pred <- 
+  predict(enet.mod, s = bestlam_enet, type = "coefficients")[1:49, ]
+enet.pred[enet.pred != 0]
 
 
 lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid, thresh = 1e-12)
