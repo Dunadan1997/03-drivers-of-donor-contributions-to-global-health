@@ -10,6 +10,9 @@ library(slider)
 library(stringi)
 library(patchwork)
 library(boot)
+library(leaps)
+library(glmnet)
+library(Matrix)
 
 # Path to Data Warehouse
 path_to_data_warehouse <- 
@@ -1312,11 +1315,8 @@ hypo_06_corr_plot <-
 
 
 # Predictive Data Analysis ------------------------------------------------
-  # Model considerations:
-    # create variable combining pledges from all multilateral funds (average or median pledge), will still be highly correlated with ODA disbursements
-    # standardize years (e.g. 1 to 22)
-    # use fixed effects from countries and years, and use robust SEs to account for auto-correlation of error terms
 
+# Load price deflator
 list_data$data[[which(list_data$source == "FRED")]] <-
   list_data %>% 
   filter(source == "FRED") %>% 
@@ -1324,6 +1324,7 @@ list_data$data[[which(list_data$source == "FRED")]] <-
   mutate(observation_date = year(observation_date)) %>% 
   rename(year = observation_date, price_deflator = GDPDEF_NBD20220101)
 
+# Transform dollar denominated variables into constant prices
 list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
   list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
@@ -1334,13 +1335,14 @@ list_data$data[[which(list_data$source == "FULL_FACTORS")]] <-
       pluck(2,1), 
     by = "year") %>% 
   mutate(
-    pledge_USD_cp = (pledge_USD / price_deflator) * 100
+    pledge_USD_cp = (pledge_USD / price_deflator) * 100,
+    across(GAVI:CEPI, 
+    ~ (.x / price_deflator) * 100,
+    .names = "{.col}_cp"
+    )
   )
 
-library(leaps)
-library(glmnet)
-
-# create dummy variables for each country and check data type for all variables, try to fill in missing values where possible
+# Create dummy variables for each country and check data type for all variables, try to fill in missing values where possible
 test <- 
   list_data %>% 
   filter(source == "FULL_FACTORS") %>% 
@@ -1348,9 +1350,9 @@ test <-
   filter(donor_type == "public") %>% 
   group_by(year, donor_name) %>% 
   mutate(
-    other_orgs_log = sum(GAVI, ADF, IFAD, IDA, GCF, GEF, GPE, AfDf, CEPI, na.rm = TRUE) / 9,
-      other_orgs_log = ifelse(is.infinite(other_orgs_log), 0, other_orgs_log),
-    pledge_USD_log = log(pledge_USD),
+    other_orgs_cp = sum(GAVI_cp, ADF_cp, IFAD_cp, IDA_cp, GCF_cp, GEF_cp, GPE_cp, AfDf_cp, CEPI_cp, na.rm = TRUE) / 9,
+    other_orgs_cp_log = ifelse(is.infinite(other_orgs_cp), 0, log(other_orgs_cp)),
+    pledge_USD_cp_log = log(pledge_USD_cp),
     oda_spent_log = log(oda_spent),
     gdp_per_cap_cp_log_rllavg02 = log(gdp_per_cap_cp_rllavg02),
     lr_all = mean(sum(lrgen_ches, lrgen_mp, lrecon_ches, na.rm = TRUE) / 3),
@@ -1361,27 +1363,39 @@ test <-
   bind_cols(
     model.matrix(~ donor_name, data = .)[, -1]
   ) %>% 
+# Select relevant variables for modelling
   select(
-    pledge_USD_log, # outcome variable
+    pledge_USD_cp_log, # outcome variable
     year_std, starts_with("donor_name"), # control variables
-    other_orgs_log, oda_spent_log, # aid financing variables
+    other_orgs_cp_log, oda_spent_log, # aid financing variables
     ends_with("rllavg01"), # fiscal variables
     ends_with("rllavg02"), # macroeconomic variables
     lr_all, yes_elec, # political variables
     -gdp_per_cap_cp_rllavg02, -donor_name # Remove unnecessary variables
     ) %>%
+# Remove rows that contain missing data
   na.omit()
 
+# Set up cross-validation parameters
+k <- 
+  5
+n <- 
+  nrow(test)
+penalty <- 
+  !startsWith(colnames(test)[-1], "donor_name") & !startsWith(colnames(test)[-1], "year")
+x <- 
+  model.matrix(pledge_USD_log ~ ., test)[, -1]
+y <- 
+  test$pledge_USD_log
 
-set.seed(1)
-k <- 5
-n <- nrow(test)
-vars <- which(!startsWith(colnames(test), "donor_name") & !startsWith(colnames(test), "year"))
-n_vars <- length(vars)-1
-folds <- sample(rep(1:k, length = n))
-cv.errors <- matrix(NA, k, n_vars, dimnames = list(NULL, paste(1:n_vars)))
-
-
+# OLS: Model selection and Assessment
+set.seed(345)
+# Create fold indices and vector to store MSEs
+folds_ols <- 
+  sample(rep(1:k, length = n))
+cv.errors <- 
+  matrix(NA, k, sum(penalty), dimnames = list(NULL, paste(1:sum(penalty))))
+# Function to predict using regsubsets
 predict.regsubsets <- function(object, newdata , id, ...) {
   form <- as.formula(object$call[[2]])
   mat <- model.matrix(form, newdata)
@@ -1389,213 +1403,138 @@ predict.regsubsets <- function(object, newdata , id, ...) {
   xvars <- names(coefi)
   mat[, xvars] %*% coefi
 }
-
-# OLS: Model selection and Assessment
+# Fit all OLS models to identify best subset
 for (j in 1:k) {
+  
   best.fit <- regfit_full <- regsubsets(
     pledge_USD_log ~ ., 
-    data = test[vars][folds != j, ], 
+    data = test[c(TRUE, penalty)][folds_ols != j, ], 
     nvmax = sum(penalty[penalty == 1])
   )
+  
   model_sizes <- 
     as.numeric(rownames(summary(best.fit)$which))
   
   for (i in seq_along(model_sizes)) {
+    
     id_val <- 
       model_sizes[i]
+    
     pred <- 
-      predict(best.fit, test[folds == j, ], id = id_val)
+      predict(best.fit, test[folds_ols == j, ], id = id_val)
+    
     cv.errors[j, i] <- 
-      mean((test$pledge_USD_log[folds == j] - pred)^2)
+      mean((test$pledge_USD_log[folds_ols == j] - pred)^2)
   }
 }
-mean.cv.erros <- apply(cv.errors, 2, mean)
-mean.cv.erros
-min(mean.cv.erros)
-par(mfrow = c(1,1))
-plot(mean.cv.erros, type = "b")
-reg.best <- regsubsets(pledge_USD_log ~ ., data = test[c(TRUE, as.logical(penalty))], nvmax = 49)
-coef(reg.best, 2)
-lm.mod <- lm(pledge_USD_log ~ ., data = test %>% select(pledge_USD_log, other_orgs_log, oda_spent_log, starts_with("donor_name"), year_std))
-summary(lm.mod)
+mean.cv.errors <- 
+  apply(cv.errors, 2, mean)
+min(mean.cv.errors)
+
 
 # Ridge: Model selection and Assessment (select best tuning parameter first on training data)
-  # not clear whether I need to select variables first and then select the best tuning parameter, or vice-versa
-set.seed(1)
-x <- 
-  model.matrix(pledge_USD_log ~ ., test)[, -1]
-y <- 
-  test$pledge_USD_log
-penalty <- 
-  rep(1, ncol(test))[-1]
-penalty[which(startsWith(colnames(test[-1]), "donor_name") | startsWith(colnames(test[-1]), "year"))] <- 
-  0
-train <- 
-  sample(1:nrow(x), nrow(x)/2)
-x.test <- 
-  (-train)
-y.test <- 
-  y[x.test]
-set.seed(2)
-grid <- 
-  10^seq(10, -2, length = 100)
-cv.ridge <- 
-  cv.glmnet(x[train, ], y[train], alpha = 0, k = 5, penalty.factor = penalty)
-plot(cv.ridge)
-bestlam_ridge <- 
-  cv.ridge$lambda.min
-ridge.mod.train <- 
-  glmnet(x[train, ], y[train], alpha = 0, penalty.factor = penalty)
-ridge.pred.test <- 
-  predict(ridge.mod.train, s = bestlam_ridge, newx = x[x.test, ], penalty.factor = penalty)
-mean(((ridge.pred.test - y.test)^2))
-ridge.mod <- 
-  glmnet(x, y, alpha = 0, penalty.factor = penalty)
-ridge.pred <- 
-  predict(ridge.mod, s = bestlam_ridge, type = "coefficients") %>% round(.,2)
+set.seed(234)
+# Create fold indices and vector to store MSEs
+folds_ridge <- 
+  sample(rep(1:k, length = n))
+cv_mse_ridge <- 
+  rep(NA, k)
+# Loop over folds
+for (i in 1:k) {
+  
+  # Split data
+  test.idx <- 
+    which(folds_ridge == i)
+  train.idx <- 
+    setdiff(1:nrow(x), test.idx)
+  
+  x.train <- 
+    x[train.idx, ]
+  y.train <- 
+    y[train.idx]
+  x.test <- 
+    x[test.idx, ]
+  y.test <-
+    y[test.idx]
+  
+  # Cross-validated lambda selection
+  cv.ridge <- 
+    cv.glmnet(x.train, y.train, alpha = 0, penalty.factor = penalty)
+  bestlam_ridge <- 
+    cv.ridge$lambda.min
+  
+  # Fit Lasso model with best lambda
+  ridge.fit <- 
+    glmnet(x.train, y.train, alpha = 0, lambda = bestlam_ridge, penalty.factor = penalty)
+  
+  # Predict on outer fold test set
+  y.pred <- 
+    predict(ridge.fit, newx = x.test)
+  
+  # Compute and store MSE
+  cv_mse_ridge[i] <-
+    mean((y.pred - y.test)^2)
+}
+# Average cross-validated MSE
+mean(cv_mse_ridge)
+
 
 # Lasso: Model selection and Assessment (select best tuning parameter first on training data)
-set.seed(3)
-cv.lasso <- 
-  cv.glmnet(x[train, ], y[train], alpha = 1, k = 5, penalty.factor = penalty)
-plot(cv.lasso)
-bestlam_lasso <- 
-  cv.lasso$lambda.min
-lasso.mod.train <- 
-  glmnet(x[train, ], y[train], alpha = 1, penalty.factor = penalty)
-lasso.pred.test <- 
-  predict(lasso.mod.train, s = bestlam_lasso, newx = x[x.test, ], penalty.factor = penalty)
-mean(((lasso.pred.test - y.test)^2))
+set.seed(123)
+# Create fold indices and vector to store MSEs
+folds_lasso <- 
+  sample(rep(1:k, length = n))
+cv_mse_lasso <-
+  rep(NA, k)
+# Loop over folds
+for (i in 1:k) {
+  
+  # Split data
+  test.idx <- 
+    which(folds_lasso == i)
+  train.idx <- 
+    setdiff(1:nrow(x), test.idx)
+  
+  x.train <- 
+    x[train.idx, ]
+  y.train <- 
+    y[train.idx]
+  x.test <-
+    x[test.idx, ]
+  y.test <-
+    y[test.idx]
+  
+  # Cross-validated lambda selection
+  cv.lasso <- 
+    cv.glmnet(x.train, y.train, alpha = 1, penalty.factor = penalty)
+  bestlam_lasso <- 
+    cv.lasso$lambda.min
+  
+  # Fit Lasso model with best lambda
+  lasso.fit <- 
+    glmnet(x.train, y.train, alpha = 1, lambda = bestlam_lasso, penalty.factor = penalty)
+  
+  # Predict on outer fold test set
+  y.pred <- 
+    predict(lasso.fit, newx = x.test)
+  
+  # Compute and store MSE
+  cv_mse_lasso[i] <- 
+    mean((y.pred - y.test)^2)
+}
+# Average cross-validated MSE
+mean(cv_mse_lasso)
+# Fit lasso model on full data
 lasso.mod <- 
   glmnet(x, y, alpha = 1, penalty.factor = penalty)
 lasso.pred <- 
-  predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:49, ]
-lasso.pred[lasso.pred != 0]
-lm.mod2 <- lm(
-  pledge_USD_log ~ ., 
-  data = test %>% select(pledge_USD_log, other_orgs_log, oda_spent_log, lr_all, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std)
-  )
-summary(lm.mod2)
+  predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:50, ]
+lasso_non0vars <- 
+  lasso.pred[lasso.pred != 0]
+# Fit post-lasso OLS for interpretation
+lm.mod.lasso <-
+  lm(pledge_USD_log ~ ., data = test %>% select(pledge_USD_log, other_orgs_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
+summary(lm.mod.lasso)
 
-# Net Elastic: Model selection and Assessment (select best tuning parameter first on training data)
-set.seed(5)
-cv.enet <-
-  cv.glmnet(x[train, ], y[train], alpha = 0.5, k = 5, penalty.factor = penalty)
-plot(cv.enet)
-bestlam_enet <- 
-  cv.enet$lambda.min
-enet.mod.train <- 
-  glmnet(x[train, ], y[train], alpha = 0.5, penalty.factor = penalty)
-enet.pred.test <- 
-  predict(enet.mod.train, s = bestlam_enet, newx = x[x.test, ], penalty.factor = penalty)
-mean(((enet.pred.test - y.test)^2))
-enet.mod <- 
-  glmnet(x, y, alpha = 0.5, penalty.factor = penalty)
-enet.pred <- 
-  predict(enet.mod, s = bestlam_enet, type = "coefficients")[1:49, ]
-enet.pred[enet.pred != 0]
+# Calculate robust SEs to account for auto-correlation of error terms
 
-
-lasso.mod <- glmnet(x[train, ], y[train], alpha = 1, lambda = grid, thresh = 1e-12)
-plot(lasso.mod)
-set.seed(1)
-cv.out <- cv.glmnet(x[train, ], y[train], alpha = 1)
-plot(cv.out)
-bestlam <- cv.out$lambda.min
-lasso.pred <- predict(lasso.mod, s = bestlam, newx = x[test_df, ])
-mean((lasso.pred - y.test)^2)
-lm.pred1 <- predict(lasso.mod, s = 0, newx = x[test_df, ], exact = T, x = x[train, ], y = y[train])
-mean((lm.pred1 - y.test)^2)
-out <- glmnet(x, y, alpha = 1, lambda = grid)
-lasso.coef <- predict(out, type = "coefficients", s = bestlam)[1:45, ]
-round(lasso.coef[lasso.coef != 0], 5)
-# Identify selected variables (excluding the intercept)
-selected_vars <- which(predict(out, type = "coefficients", s = bestlam) != 0)[-1]
-# Get names of selected variables
-selected_names <- names(lasso.coef[selected_vars])  # +1 to skip intercept
-# Convert x matrix to a data frame for OLS
-x_df <- as_tibble(x[train, ])
-x_selected <- x_df[, selected_names, drop = FALSE]
-# Fit post-LASSO OLS
-post_lasso_ols1 <- lm(y[train] ~ ., data = x_selected)
-# View summary
-summary(post_lasso_ols1)
-# Fit post-LASSO OLS with all control variables
-post_lasso_ols2 <- lm(y[train] ~ ., data = x_df[train, ] %>% select(year_std, starts_with("donor_name"), other_orgs, oda_spent_log, adjfsclblc_rllavg01, inflation_rt_rllavg02, yes_elec))
-summary(post_lasso_ols2)
-
-#### archive ####
-train <- sample(1:nrow(x), nrow(x)/2)
-x.test <- (-train)
-y.test <- y[x.test]
-grid <- 10^seq(10, -2, length = 100)
-
-k <- 5
-n <- nrow(test)
-v <- ncol(test)-1
-set.seed(1)
-folds <- sample(rep(1:k, length = n))
-cv.errors <- matrix(NA, k, v, dimnames = list(NULL, paste(1:v)))
-
-which_models <- as.numeric(rownames(summary(best.fit)$which))
-
-# distinguish train and test
-for (j in 1:k) {
-  best.fit <- regsubsets(pledge_USD_log ~ ., data = test[folds != j, ], nvmax = v, method = "forward")
-  model_sizes <- as.numeric(rownames(summary(best.fit)$which))
-  
-  for (m in seq_along(model_sizes)) {
-    id_val <- model_sizes[m]
-    pred <- predict(best.fit, test[folds == j, ], id = id_val)
-    cv.errors[j, m] <- mean((test$pledge_USD_log[folds == j] - pred)^2)
-  }
-}
-
-# train
-reg.summary <- summary(best.fit)
-par(mfrow = c(1, 1))
-plot(reg.summary$adjr2, type = "l")
-plot(reg.summary$rss, type = "l")
-which.max(reg.summary$adjr2)
-which.min(reg.summary$rss)
-which.min(reg.summary$cp)
-best_vars <- names(coef(best.fit, id = 10))[-1]
-best_formula <- as.formula(
-  paste("pledge_USD_log ~", paste(best_vars, collapse = " + "))
-)
-lm_best <- lm(best_formula, data = test)
-vif(lm_best)
-summary(lm_best)
-
-# test
-mean.cv.errors <- apply(cv.errors, 2, mean)
-se.cv.errors <- apply(cv.errors, 2, sd) / sqrt(k)
-par(mfrow = c(1, 1))
-plot(mean.cv.errors, type = "b")
-reg.best <- regsubsets(pledge_USD_log ~ ., data = test, nvmax = v)
-model.best <- mean.cv.errors[mean.cv.errors <= (se.cv.errors[which.min(mean.cv.errors)] + min(mean.cv.errors, na.rm = T))][1] %>% names() %>% as.numeric()
-round(coef(reg.best, 36), 2)
-best_vars <- names(coef(reg.best, id = which.min(mean.cv.errors)))[-1]
-best_formula <- as.formula(
-  paste("pledge_USD_log ~", paste(best_vars, collapse = " + "))
-)
-lm_best <- lm(best_formula, data = test)
-vif(lm_best)
-
-for (j in 1:k) {
-  best.fit <- regsubsets(pledge_USD ~ .,
-                         data = test[folds != j,],
-                         nvmax = v)
-  n_models <- ncol(summary(best.fit)$which)
-  for (i in 1:n_models) {
-    pred <- predict(best.fit, test[folds == j, ], id = i)
-    cv.errors[j, i] <-
-      mean((test$pledge_USD[folds == j] - pred)^2)
-  }
-}
-
-# Model Selection
-  # Forward stepwise selection (if computationally possible, then Best Subset Selection)
-
-# Model Assessment
-  # K-Fold Cross-Validation, with one-standard-error rule when assessing the bess model
