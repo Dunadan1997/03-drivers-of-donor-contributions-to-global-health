@@ -1352,17 +1352,16 @@ test <-
   mutate(
     other_orgs_cp = sum(GAVI_cp, ADF_cp, IFAD_cp, IDA_cp, GCF_cp, GEF_cp, GPE_cp, AfDf_cp, CEPI_cp, na.rm = TRUE) / 9,
     other_orgs_cp_log = ifelse(is.infinite(other_orgs_cp), 0, log(other_orgs_cp)),
+    other_orgs_cp_log = ifelse(other_orgs_cp_log == -Inf, 0, other_orgs_cp_log), # addressing -Inf error with Malta 2022
     pledge_USD_cp_log = log(pledge_USD_cp),
     oda_spent_log = log(oda_spent),
     gdp_per_cap_cp_log_rllavg02 = log(gdp_per_cap_cp_rllavg02),
     lr_all = mean(sum(lrgen_ches, lrgen_mp, lrecon_ches, na.rm = TRUE) / 3),
-    year_std = year-2000
+    year_std = year-2000,
+    donor_name = str_replace_all(donor_name, " ", "_")
     ) %>% 
   ungroup() %>% 
   filter(lr_all != 0) %>% 
-  bind_cols(
-    model.matrix(~ donor_name, data = .)[, -1]
-  ) %>% 
 # Select relevant variables for modelling
   select(
     pledge_USD_cp_log, # outcome variable
@@ -1371,22 +1370,28 @@ test <-
     ends_with("rllavg01"), # fiscal variables
     ends_with("rllavg02"), # macroeconomic variables
     lr_all, yes_elec, # political variables
-    -gdp_per_cap_cp_rllavg02, -donor_name # Remove unnecessary variables
+    -gdp_per_cap_cp_rllavg02 # Remove unnecessary variables
     ) %>%
 # Remove rows that contain missing data
   na.omit()
+
+test$donor_name <-
+  relevel(as.factor(test$donor_name), ref = "Malta")
 
 # Set up cross-validation parameters
 k <- 
   5
 n <- 
   nrow(test)
-penalty <- 
-  !startsWith(colnames(test)[-1], "donor_name") & !startsWith(colnames(test)[-1], "year")
 x <- 
-  model.matrix(pledge_USD_log ~ ., test)[, -1]
+  model.matrix(pledge_USD_cp_log ~ ., 
+               test,
+               contrasts.arg = list(donor_name = "contr.treatment")
+               )[, -1]
 y <- 
-  test$pledge_USD_log
+  test$pledge_USD_cp_log
+penalty <- 
+  !startsWith(colnames(x), "donor_name") & !startsWith(colnames(x), "year")
 
 # OLS: Model selection and Assessment
 set.seed(345)
@@ -1404,11 +1409,12 @@ predict.regsubsets <- function(object, newdata , id, ...) {
   mat[, xvars] %*% coefi
 }
 # Fit all OLS models to identify best subset
+set.seed(345)
 for (j in 1:k) {
   
   best.fit <- regfit_full <- regsubsets(
-    pledge_USD_log ~ ., 
-    data = test[c(TRUE, penalty)][folds_ols != j, ], 
+    pledge_USD_cp_log ~ ., 
+    data = test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols != j, ], 
     nvmax = sum(penalty[penalty == 1])
   )
   
@@ -1421,10 +1427,10 @@ for (j in 1:k) {
       model_sizes[i]
     
     pred <- 
-      predict(best.fit, test[folds_ols == j, ], id = id_val)
+      predict(best.fit, test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols == j, ], id = id_val)
     
     cv.errors[j, i] <- 
-      mean((test$pledge_USD_log[folds_ols == j] - pred)^2)
+      mean((test$pledge_USD_cp_log[folds_ols == j] - pred)^2)
   }
 }
 mean.cv.errors <- 
@@ -1440,6 +1446,7 @@ folds_ridge <-
 cv_mse_ridge <- 
   rep(NA, k)
 # Loop over folds
+set.seed(234)
 for (i in 1:k) {
   
   # Split data
@@ -1487,6 +1494,7 @@ folds_lasso <-
 cv_mse_lasso <-
   rep(NA, k)
 # Loop over folds
+set.seed(123)
 for (i in 1:k) {
   
   # Split data
@@ -1528,13 +1536,20 @@ mean(cv_mse_lasso)
 lasso.mod <- 
   glmnet(x, y, alpha = 1, penalty.factor = penalty)
 lasso.pred <- 
-  predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:50, ]
+  predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:44, ]
 lasso_non0vars <- 
   lasso.pred[lasso.pred != 0]
 # Fit post-lasso OLS for interpretation
 lm.mod.lasso <-
-  lm(pledge_USD_log ~ ., data = test %>% select(pledge_USD_log, other_orgs_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
+  lm(pledge_USD_cp_log ~ ., data = test %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
 summary(lm.mod.lasso)
+plot(lasso.mod)
+
+# Post-estimation
+library(sandwich)
+library(lmtest)
+coeftest(lm.mod.lasso, vcov = vcovHC(lm.mod.lasso, type = "HC1"))
 
 # Calculate robust SEs to account for auto-correlation of error terms
+
 
