@@ -1373,7 +1373,8 @@ test <-
     -gdp_per_cap_cp_rllavg02 # Remove unnecessary variables
     ) %>%
 # Remove rows that contain missing data
-  na.omit()
+  na.omit() %>% 
+  arrange(donor_name, year_std)
 
 test$donor_name <-
   relevel(as.factor(test$donor_name), ref = "Malta")
@@ -1484,6 +1485,53 @@ for (i in 1:k) {
 }
 # Average cross-validated MSE
 mean(cv_mse_ridge)
+cv.ridge <- 
+  cv.glmnet(x, y, alpha = 0, penalty.factor = penalty)
+bestlam_ridge <- 
+  cv.ridge$lambda.min
+ridge.mod <- 
+  glmnet(x, y, alpha = 0, lambda = bestlam_ridge, penalty.factor = penalty)
+# Plot lambda path and selection
+plot(cv.ridge)
+# Plot coefficient path
+ridge.path <- 
+  glmnet(x, y, alpha = 0, penalty.factor = penalty)
+beta_mat <- 
+  as.matrix(ridge.path$beta)
+coef_df <- 
+  as.data.frame(beta_mat)
+lambda_vals <- 
+  tibble(lambda = ridge.path$lambda, lambda_index = colnames(coef_df))
+coef_df$predictor <- 
+  rownames(coef_df)
+coef_long <- 
+  coef_df %>%
+  pivot_longer(
+    cols = -predictor,
+    names_to = "lambda_index",
+    values_to = "coefficient"
+  ) %>% 
+  left_join(
+    lambda_vals, 
+    by = "lambda_index", 
+    keep = FALSE) %>% 
+  mutate(
+    log_lambda = log(lambda)
+    )
+selected_vars <- 
+  colnames(x[,!startsWith(colnames(x), "donor_name") & colnames(x) != "year_std"])
+coef_filtered <- coef_long %>%
+  filter(predictor %in% selected_vars)
+ggplot(coef_filtered, aes(x = log_lambda, y = coefficient, color = predictor)) +
+  geom_line(size = 1) +
+  geom_vline(xintercept = log(bestlam_ridge))+
+  labs(
+    title = "Ridge Coefficient Paths (Selected Predictors)",
+    x = "log(Lambda)",
+    y = "Coefficient"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "")
 
 
 # Lasso: Model selection and Assessment (select best tuning parameter first on training data)
@@ -1533,23 +1581,150 @@ for (i in 1:k) {
 # Average cross-validated MSE
 mean(cv_mse_lasso)
 # Fit lasso model on full data
+cv.lasso <- 
+  cv.glmnet(x, y, alpha = 1, penalty.factor = penalty)
+bestlam_lasso <- 
+  cv.lasso$lambda.min
 lasso.mod <- 
-  glmnet(x, y, alpha = 1, penalty.factor = penalty)
+  glmnet(x, y, alpha = 1, lambda = bestlam_lasso, penalty.factor = penalty)
 lasso.pred <- 
-  predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:44, ]
+  predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:45, ]
 lasso_non0vars <- 
   lasso.pred[lasso.pred != 0]
 # Fit post-lasso OLS for interpretation
 lm.mod.lasso <-
   lm(pledge_USD_cp_log ~ ., data = test %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
 summary(lm.mod.lasso)
-plot(lasso.mod)
+
+lasso.path <- 
+  glmnet(x, y, alpha = 1, penalty.factor = penalty)
+beta_mat <- 
+  as.matrix(lasso.path$beta)
+coef_df <- 
+  as.data.frame(beta_mat)
+lambda_vals <- 
+  tibble(lambda = lasso.path$lambda, lambda_index = colnames(coef_df))
+coef_df$predictor <- 
+  rownames(coef_df)
+coef_long <- 
+  coef_df %>%
+  pivot_longer(
+    cols = -predictor,
+    names_to = "lambda_index",
+    values_to = "coefficient"
+  ) %>% 
+  left_join(
+    lambda_vals, 
+    by = "lambda_index", 
+    keep = FALSE) %>% 
+  mutate(
+    log_lambda = log(lambda)
+  )
+selected_vars <- 
+  colnames(x[,!startsWith(colnames(x), "donor_name") & colnames(x) != "year_std"])
+coef_filtered <- coef_long %>%
+  filter(predictor %in% selected_vars)
+ggplot(coef_filtered, aes(x = log_lambda, y = coefficient, color = predictor)) +
+  geom_line(size = 1) +
+  geom_vline(xintercept = log(bestlam_lasso)) +
+  labs(
+    title = "Lasso Coefficient Paths (Selected Predictors)",
+    x = "log(Lambda)",
+    y = "Coefficient"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "")
 
 # Post-estimation
 library(sandwich)
 library(lmtest)
-coeftest(lm.mod.lasso, vcov = vcovHC(lm.mod.lasso, type = "HC1"))
+
+# Non-linearity of the response-predictor relationships: SUCCESS
+plot(lm.mod.lasso, which = 1)
+car::crPlots(lm.mod.lasso, layout = c(4, 3))
+
+# Correlation of error terms: PARTIAL SUCCESS, but MITIGATED with Robust SEs
+dev.off()
+plot(residuals(lm.mod.lasso), type = "l",
+     main = "Residuals over Observations",
+     xlab = "Observation index",
+     ylab = "Residuals")
+abline(h = 0, col = "red", lty = 2)
+acf(residuals(lm.mod.lasso), main = "ACF of Residuals")
+resids <- residuals(lm.mod.lasso)
+cor(1:length(resids), resids)
+lmtest::dwtest(lm.mod.lasso)
+
+# Non-constant variance of error terms: SUCCESS
+plot(lm.mod.lasso, which = 3)
+lmtest::bptest(lm.mod.lasso)
+
+# Outliers: FAIL (3 outliers) but NEGLIGEABLE impact
+plot(lm.mod.lasso, which = 5)
+test %>% slice(c(36, 111, 132))
+
+# High-leverage points: FAIL (9 high leverage points) but NEGLIGEABLE impact
+leverage <- hatvalues(lm.mod.lasso)
+high_leverage <- which(leverage > (2 * mean(leverage)))
+test[high_leverage, ]
+
+# Collinearity: FAIL (2 problematic) but JUSTIFIED
+vif_values <- car::vif(lm.mod.lasso)
+rownames_to_column(as.data.frame(vif_values), var = "rowname") %>% filter(`GVIF^(1/(2*Df))` > 5)
 
 # Calculate robust SEs to account for auto-correlation of error terms
+lm.mod.lasso.robust <- 
+  lmtest::coeftest(lm.mod.lasso, vcov = sandwich::vcovCL(lm.mod.lasso, cluster = ~ donor_name))
+lm.mod.lasso.robust
+
+
+# Compare full model with model without high leverage points and robust model with minimized outliers and leverage points
+model_robust <- MASS::rlm(pledge_USD_cp_log ~ ., data = test %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
+model_clean <- lm(pledge_USD_cp_log ~ ., data = test[-high_leverage,] %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
+
+rmse <- function(model) {
+  sqrt(mean(residuals(model)^2))
+}
+rmse(lm.mod.lasso)
+rmse(model_robust)
+rmse(model_clean)
+
+# Get predicted values
+test$pred_full <- predict(lm.mod.lasso)
+test_clean <- test[-high_leverage, ]  # remove high leverage points
+test_clean$pred_clean <- predict(model_clean)
+test_robust <- test
+test_robust$pred_robust <- predict(model_robust)
+
+# Add actual values
+test$actual <- test$pledge_USD_cp_log
+test_clean$actual <- test_clean$pledge_USD_cp_log
+test_robust$actual <- test$pledge_USD_cp_log
+
+# Combine both into a single data-frame for ggplot
+test$Model <- "Full Model"
+test_clean$Model <- "Clean Model"
+test_robust$Model <- "Robust Model"
+
+combined <- bind_rows(
+  test %>% select(actual, predicted = pred_full, Model),
+  test_clean %>% select(actual, predicted = pred_clean, Model),
+  test_robust %>% select(actual, predicted = pred_robust, Model)
+)
+
+ggplot(combined, aes(x = actual, y = predicted, color = Model)) +
+  geom_point(alpha = 0.6) +
+  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
+  geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dotted") +  # ideal line
+  labs(title = "Predicted vs Actual Values",
+       x = "Actual (log pledge)",
+       y = "Predicted (log pledge)") +
+  theme_minimal() +
+  scale_color_manual(values = c("Full Model" = blue_shades[[3]], "Clean Model" = red_shades[[3]], "Robust Model" = yellow_shades[[3]]))
+
+# use Ridge model to predict, use (robust) OLS to interpret results
+
+
+
 
 
