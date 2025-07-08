@@ -14,6 +14,9 @@ library(leaps)
 library(glmnet)
 library(Matrix)
 
+# Load Functions
+source("Functions_GC8.R")
+
 # Path to Data Warehouse
 path_to_data_warehouse <- 
   "/Users/brunoalvesdecarvalho/Desktop/DataWarehouse_20231015_ve01/TGF"
@@ -1491,47 +1494,14 @@ bestlam_ridge <-
   cv.ridge$lambda.min
 ridge.mod <- 
   glmnet(x, y, alpha = 0, lambda = bestlam_ridge, penalty.factor = penalty)
+ridge.pred <- 
+  predict(ridge.mod, s = bestlam_lasso, type = "coefficients")[1:45,]
+ridge_non0vars <- 
+  names(ridge.pred[abs(ridge.pred) >= 0.05 & !startsWith(names(ridge.pred), "donor_name") & !names(ridge.pred) %in% c("year_std", "(Intercept)")])
 # Plot lambda path and selection
 plot(cv.ridge)
 # Plot coefficient path
-ridge.path <- 
-  glmnet(x, y, alpha = 0, penalty.factor = penalty)
-beta_mat <- 
-  as.matrix(ridge.path$beta)
-coef_df <- 
-  as.data.frame(beta_mat)
-lambda_vals <- 
-  tibble(lambda = ridge.path$lambda, lambda_index = colnames(coef_df))
-coef_df$predictor <- 
-  rownames(coef_df)
-coef_long <- 
-  coef_df %>%
-  pivot_longer(
-    cols = -predictor,
-    names_to = "lambda_index",
-    values_to = "coefficient"
-  ) %>% 
-  left_join(
-    lambda_vals, 
-    by = "lambda_index", 
-    keep = FALSE) %>% 
-  mutate(
-    log_lambda = log(lambda)
-    )
-selected_vars <- 
-  colnames(x[,!startsWith(colnames(x), "donor_name") & colnames(x) != "year_std"])
-coef_filtered <- coef_long %>%
-  filter(predictor %in% selected_vars)
-ggplot(coef_filtered, aes(x = log_lambda, y = coefficient, color = predictor)) +
-  geom_line(size = 1) +
-  geom_vline(xintercept = log(bestlam_ridge))+
-  labs(
-    title = "Ridge Coefficient Paths (Selected Predictors)",
-    x = "log(Lambda)",
-    y = "Coefficient"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "")
+coef_path_plot(0, bestlam_ridge, ridge_non0vars)
 
 
 # Lasso: Model selection and Assessment (select best tuning parameter first on training data)
@@ -1583,6 +1553,7 @@ mean(cv_mse_lasso)
 # Fit lasso model on full data
 cv.lasso <- 
   cv.glmnet(x, y, alpha = 1, penalty.factor = penalty)
+plot(cv.lasso)
 bestlam_lasso <- 
   cv.lasso$lambda.min
 lasso.mod <- 
@@ -1590,50 +1561,44 @@ lasso.mod <-
 lasso.pred <- 
   predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:45, ]
 lasso_non0vars <- 
-  lasso.pred[lasso.pred != 0]
+  names(lasso.pred[lasso.pred != 0 & !startsWith(names(lasso.pred), "donor_name") & !names(lasso.pred) %in% c("year_std", "(Intercept)")])
 # Fit post-lasso OLS for interpretation
 lm.mod.lasso <-
   lm(pledge_USD_cp_log ~ ., data = test %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
 summary(lm.mod.lasso)
-
-lasso.path <- 
-  glmnet(x, y, alpha = 1, penalty.factor = penalty)
-beta_mat <- 
-  as.matrix(lasso.path$beta)
-coef_df <- 
-  as.data.frame(beta_mat)
-lambda_vals <- 
-  tibble(lambda = lasso.path$lambda, lambda_index = colnames(coef_df))
-coef_df$predictor <- 
-  rownames(coef_df)
-coef_long <- 
-  coef_df %>%
-  pivot_longer(
-    cols = -predictor,
-    names_to = "lambda_index",
-    values_to = "coefficient"
-  ) %>% 
-  left_join(
-    lambda_vals, 
-    by = "lambda_index", 
-    keep = FALSE) %>% 
-  mutate(
-    log_lambda = log(lambda)
+# Plot coefficient path
+coef_path_plot(1, bestlam_lasso, lasso_non0vars) +
+  scale_color_manual(values = 
+                       c(
+                         "other_orgs_cp_log" = purple_shades[[2]],
+                         "oda_spent_log" = purple_shades[[3]],
+                         "prmryfsclblc_rllavg01" = green_shades[[2]], 
+                         "adjfsclblc_rllavg01" = green_shades[[3]],
+                         "gdp_cp_rllavg02" = blue_shades[[1]],     
+                         "inflation_rt_rllavg02" = blue_shades[[2]],   
+                         "unemployment_rt_rllavg02" = blue_shades[[3]], 
+                         "lr_all" = red_shades[[2]],                   
+                         "yes_elec" = red_shades[[3]]
+                         )
+                     ) +
+  scale_linetype_manual(values = 
+                          c(
+                            "other_orgs_cp_log" = "solid",
+                            "oda_spent_log" = "solid",
+                            "prmryfsclblc_rllavg01" = "dashed", 
+                            "adjfsclblc_rllavg01" = "dashed",
+                            "gdp_cp_rllavg02" = "dotted",     
+                            "inflation_rt_rllavg02" = "dotted",   
+                            "unemployment_rt_rllavg02" = "dotted", 
+                            "lr_all" = "dotdash",                   
+                            "yes_elec" = "dotdash"
+                            )
+                        ) +
+  theme(
+    legend.position = c(0.8, 0.65),  
+    legend.title = element_blank()
   )
-selected_vars <- 
-  colnames(x[,!startsWith(colnames(x), "donor_name") & colnames(x) != "year_std"])
-coef_filtered <- coef_long %>%
-  filter(predictor %in% selected_vars)
-ggplot(coef_filtered, aes(x = log_lambda, y = coefficient, color = predictor)) +
-  geom_line(size = 1) +
-  geom_vline(xintercept = log(bestlam_lasso)) +
-  labs(
-    title = "Lasso Coefficient Paths (Selected Predictors)",
-    x = "log(Lambda)",
-    y = "Coefficient"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "")
+
 
 # Post-estimation
 library(sandwich)
