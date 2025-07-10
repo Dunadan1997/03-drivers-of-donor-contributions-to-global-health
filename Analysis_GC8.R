@@ -1404,6 +1404,8 @@ folds_ols <-
   sample(rep(1:k, length = n))
 cv.errors <- 
   matrix(NA, k, sum(penalty), dimnames = list(NULL, paste(1:sum(penalty))))
+adjr2_vals <- 
+  matrix(NA, k, sum(penalty)) 
 # Function to predict using regsubsets
 predict.regsubsets <- function(object, newdata , id, ...) {
   form <- as.formula(object$call[[2]])
@@ -1415,31 +1417,49 @@ predict.regsubsets <- function(object, newdata , id, ...) {
 # Fit all OLS models to identify best subset
 set.seed(345)
 for (j in 1:k) {
+
+  # Subset training and test data
+  train_data <- 
+    test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols != j, ]
+  test_data <- 
+    test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols == j, ]
   
-  best.fit <- regfit_full <- regsubsets(
+  # Fit regsubsets
+  best.fit <- regsubsets(
     pledge_USD_cp_log ~ ., 
-    data = test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols != j, ], 
-    nvmax = sum(penalty[penalty == 1])
+    data = train_data, 
+    nvmax = sum(penalty), 
+    method = "forward"
   )
   
+  # Extract model sizes and Adjusted R2
   model_sizes <- 
     as.numeric(rownames(summary(best.fit)$which))
+  adj_r2_all <- 
+    summary(best.fit)$adjr2
   
   for (i in seq_along(model_sizes)) {
     
     id_val <- 
       model_sizes[i]
     
+    # Predictions on validation fold
     pred <- 
-      predict(best.fit, test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols == j, ], id = id_val)
+      predict(best.fit, test_data, id = id_val)
     
+    # Store CV error
     cv.errors[j, i] <- 
       mean((test$pledge_USD_cp_log[folds_ols == j] - pred)^2)
+    
+    # Store Adjusted R2
+    adjr2_vals[j, i] <- adj_r2_all[id_val]
   }
 }
 mean.cv.errors <- 
   apply(cv.errors, 2, mean)
 min(mean.cv.errors)
+mean.adjr2 <-
+  apply(adjr2_vals, 2, mean)
 
 
 # Ridge: Model selection and Assessment (select best tuning parameter first on training data)
@@ -1495,7 +1515,7 @@ bestlam_ridge <-
 ridge.mod <- 
   glmnet(x, y, alpha = 0, lambda = bestlam_ridge, penalty.factor = penalty)
 ridge.pred <- 
-  predict(ridge.mod, s = bestlam_lasso, type = "coefficients")[1:45,]
+  predict(ridge.mod, s = bestlam_ridge, type = "coefficients")[1:45,]
 ridge_non0vars <- 
   names(ridge.pred[abs(ridge.pred) >= 0.05 & !startsWith(names(ridge.pred), "donor_name") & !names(ridge.pred) %in% c("year_std", "(Intercept)")])
 # Plot lambda path and selection
