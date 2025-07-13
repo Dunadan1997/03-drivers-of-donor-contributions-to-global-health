@@ -1379,50 +1379,36 @@ test <-
   na.omit() %>% 
   arrange(donor_name, year_std)
 
-test$donor_name <-
-  relevel(as.factor(test$donor_name), ref = "Malta")
+test$donor_name <- relevel(as.factor(test$donor_name), ref = "Malta")
 
 # Set up cross-validation parameters
-k <- 
-  5
-n <- 
-  nrow(test)
-x <- 
-  model.matrix(pledge_USD_cp_log ~ ., 
-               test,
-               contrasts.arg = list(donor_name = "contr.treatment")
-               )[, -1]
-y <- 
-  test$pledge_USD_cp_log
-penalty <- 
-  !startsWith(colnames(x), "donor_name") & !startsWith(colnames(x), "year")
+k <- 5
+n <- nrow(test)
+x <- model.matrix(pledge_USD_cp_log ~ ., test %>% select(-year_std, -donor_name))[, -1]
+x_controls <- model.matrix(pledge_USD_cp_log ~ ., test,contrasts.arg = list(donor_name = "contr.treatment"))[, -1]
+y <- test$pledge_USD_cp_log
+penalty <- !startsWith(colnames(x_controls), "donor_name") & !startsWith(colnames(x_controls), "year")
 
 # OLS: Model selection and Assessment
 set.seed(345)
-# Create fold indices and vector to store MSEs
-folds_ols <- 
+# Create fold indices 
+folds <- 
   sample(rep(1:k, length = n))
+# Create vectors to store loop results
 cv.errors <- 
-  matrix(NA, k, sum(penalty), dimnames = list(NULL, paste(1:sum(penalty))))
+  matrix(NA, nrow = k, ncol = sum(penalty))
 adjr2_vals <- 
-  matrix(NA, k, sum(penalty)) 
-# Function to predict using regsubsets
-predict.regsubsets <- function(object, newdata , id, ...) {
-  form <- as.formula(object$call[[2]])
-  mat <- model.matrix(form, newdata)
-  coefi <- coef(object, id = id)
-  xvars <- names(coefi)
-  mat[, xvars] %*% coefi
-}
-# Fit all OLS models to identify best subset
-set.seed(345)
+  matrix(NA, nrow = k, ncol = sum(penalty))
+best.vars <- 
+  as_tibble(matrix(NA, nrow = k, ncol = sum(penalty)))
+# Loop over folds
 for (j in 1:k) {
 
   # Subset training and test data
   train_data <- 
-    test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols != j, ]
+    test[ , !(names(test) %in% c("year_std", "donor_name"))][folds != j, ]
   test_data <- 
-    test[ , !(names(test) %in% c("year_std", "donor_name"))][folds_ols == j, ]
+    test[ , !(names(test) %in% c("year_std", "donor_name"))][folds == j, ]
   
   # Fit regsubsets
   best.fit <- regsubsets(
@@ -1449,71 +1435,38 @@ for (j in 1:k) {
     
     # Store CV error
     cv.errors[j, i] <- 
-      mean((test$pledge_USD_cp_log[folds_ols == j] - pred)^2)
+      mean((test$pledge_USD_cp_log[folds == j] - pred)^2)
     
     # Store Adjusted R2
     adjr2_vals[j, i] <- adj_r2_all[id_val]
   }
+  
+  best.vars[j, 1:length(coef(best.fit, which.max(adjr2_vals[j, ])))+1] <- 
+    as.list(names(coef(best.fit, which.max(adjr2_vals[j, ]))))
+  
 }
 mean.cv.errors <- 
   apply(cv.errors, 2, mean)
 min(mean.cv.errors)
+which.min(mean.cv.errors)
 mean.adjr2 <-
   apply(adjr2_vals, 2, mean)
+which.max(mean.adjr2)
+coef(best.fit, which.max(mean.adjr2))
 
 
 # Ridge: Model selection and Assessment (select best tuning parameter first on training data)
-set.seed(234)
-# Create fold indices and vector to store MSEs
-folds_ridge <- 
-  sample(rep(1:k, length = n))
-cv_mse_ridge <- 
-  rep(NA, k)
 # Loop over folds
-set.seed(234)
-for (i in 1:k) {
-  
-  # Split data
-  test.idx <- 
-    which(folds_ridge == i)
-  train.idx <- 
-    setdiff(1:nrow(x), test.idx)
-  
-  x.train <- 
-    x[train.idx, ]
-  y.train <- 
-    y[train.idx]
-  x.test <- 
-    x[test.idx, ]
-  y.test <-
-    y[test.idx]
-  
-  # Cross-validated lambda selection
-  cv.ridge <- 
-    cv.glmnet(x.train, y.train, alpha = 0, penalty.factor = penalty)
-  bestlam_ridge <- 
-    cv.ridge$lambda.min
-  
-  # Fit Lasso model with best lambda
-  ridge.fit <- 
-    glmnet(x.train, y.train, alpha = 0, lambda = bestlam_ridge, penalty.factor = penalty)
-  
-  # Predict on outer fold test set
-  y.pred <- 
-    predict(ridge.fit, newx = x.test)
-  
-  # Compute and store MSE
-  cv_mse_ridge[i] <-
-    mean((y.pred - y.test)^2)
-}
+cv_mse_ridge <- 
+  reg_model(0)
 # Average cross-validated MSE
 mean(cv_mse_ridge)
 cv.ridge <- 
-  cv.glmnet(x, y, alpha = 0, penalty.factor = penalty)
+  cv.glmnet(x_controls, y, alpha = 0, penalty.factor = penalty)
 bestlam_ridge <- 
   cv.ridge$lambda.min
 ridge.mod <- 
-  glmnet(x, y, alpha = 0, lambda = bestlam_ridge, penalty.factor = penalty)
+  glmnet(x_controls, y, alpha = 0, lambda = bestlam_ridge, penalty.factor = penalty)
 ridge.pred <- 
   predict(ridge.mod, s = bestlam_ridge, type = "coefficients")[1:45,]
 ridge_non0vars <- 
@@ -1525,59 +1478,19 @@ coef_path_plot(0, bestlam_ridge, ridge_non0vars)
 
 
 # Lasso: Model selection and Assessment (select best tuning parameter first on training data)
-set.seed(123)
-# Create fold indices and vector to store MSEs
-folds_lasso <- 
-  sample(rep(1:k, length = n))
-cv_mse_lasso <-
-  rep(NA, k)
 # Loop over folds
-set.seed(123)
-for (i in 1:k) {
-  
-  # Split data
-  test.idx <- 
-    which(folds_lasso == i)
-  train.idx <- 
-    setdiff(1:nrow(x), test.idx)
-  
-  x.train <- 
-    x[train.idx, ]
-  y.train <- 
-    y[train.idx]
-  x.test <-
-    x[test.idx, ]
-  y.test <-
-    y[test.idx]
-  
-  # Cross-validated lambda selection
-  cv.lasso <- 
-    cv.glmnet(x.train, y.train, alpha = 1, penalty.factor = penalty)
-  bestlam_lasso <- 
-    cv.lasso$lambda.min
-  
-  # Fit Lasso model with best lambda
-  lasso.fit <- 
-    glmnet(x.train, y.train, alpha = 1, lambda = bestlam_lasso, penalty.factor = penalty)
-  
-  # Predict on outer fold test set
-  y.pred <- 
-    predict(lasso.fit, newx = x.test)
-  
-  # Compute and store MSE
-  cv_mse_lasso[i] <- 
-    mean((y.pred - y.test)^2)
-}
+cv_mse_lasso <- 
+  reg_model(1)
 # Average cross-validated MSE
 mean(cv_mse_lasso)
 # Fit lasso model on full data
 cv.lasso <- 
-  cv.glmnet(x, y, alpha = 1, penalty.factor = penalty)
+  cv.glmnet(x_controls, y, alpha = 1, penalty.factor = penalty)
 plot(cv.lasso)
 bestlam_lasso <- 
   cv.lasso$lambda.min
 lasso.mod <- 
-  glmnet(x, y, alpha = 1, lambda = bestlam_lasso, penalty.factor = penalty)
+  glmnet(x_controls, y, alpha = 1, lambda = bestlam_lasso, penalty.factor = penalty)
 lasso.pred <- 
   predict(lasso.mod, s = bestlam_lasso, type = "coefficients")[1:45, ]
 lasso_non0vars <- 
