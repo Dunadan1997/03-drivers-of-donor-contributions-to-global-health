@@ -48,6 +48,12 @@ reg_model <- function(reg_type) {
     # Compute and store MSE
     cv_mse[i] <-
       mean((y.pred - y.test)^2)
+    
+    coefs <- coef(fit)
+    coef_vector <- as.vector(coefs)
+    names(coef_vector) <- rownames(coefs)
+    best.vars.shrinkage[1,colnames(best.vars.shrinkage) %in% colnames(as_tibble_row(coef_vector))] <- as_tibble_row(coef_vector)[colnames(as_tibble_row(coef_vector)) %in% colnames(best.vars.shrinkage)]
+    
   }
   
   print(cv_mse)

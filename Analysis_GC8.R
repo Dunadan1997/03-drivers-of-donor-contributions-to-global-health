@@ -1400,7 +1400,7 @@ cv.errors <-
 adjr2_vals <- 
   matrix(NA, nrow = k, ncol = sum(penalty))
 best.vars <- 
-  as_tibble(matrix(NA, nrow = k, ncol = sum(penalty)))
+  as_tibble(matrix(NA, nrow = k, ncol = sum(penalty), dimnames = list(c(NULL), c(colnames(x)))))
 # Loop over folds
 for (j in 1:k) {
 
@@ -1441,8 +1441,8 @@ for (j in 1:k) {
     adjr2_vals[j, i] <- adj_r2_all[id_val]
   }
   
-  best.vars[j, 1:length(coef(best.fit, which.max(adjr2_vals[j, ])))+1] <- 
-    as.list(names(coef(best.fit, which.max(adjr2_vals[j, ]))))
+  best.vars[j,colnames(best.vars) %in% names(coef(best.fit, which.max(adjr2_vals[j, ])))] <- 
+    as_tibble_row(coef(best.fit, which.max(adjr2_vals[j, ])))[,colnames(as_tibble_row(coef(best.fit, which.max(adjr2_vals[j, ])))) %in% colnames(best.vars)]
   
 }
 mean.cv.errors <- 
@@ -1453,7 +1453,16 @@ mean.adjr2 <-
   apply(adjr2_vals, 2, mean)
 which.max(mean.adjr2)
 coef(best.fit, which.max(mean.adjr2))
-
+ols_validation_results <- 
+  pivot_longer(
+  best.vars, 
+  cols = colnames(best.vars), 
+  names_to = "Variable", 
+  values_to = "Coef") %>% 
+  filter(!is.na(Coef)) %>% 
+  group_by(Variable) %>% 
+  summarise(Included = n(), Mean_Coef = mean(Coef)) %>% 
+  arrange(desc(Included), desc(abs(Mean_Coef)))
 
 # Ridge: Model selection and Assessment (select best tuning parameter first on training data)
 # Loop over folds
@@ -1478,6 +1487,11 @@ coef_path_plot(0, bestlam_ridge, ridge_non0vars)
 
 
 # Lasso: Model selection and Assessment (select best tuning parameter first on training data)
+# ???
+best.vars.shrinkage <- 
+  as_tibble(matrix(NA, nrow = k, ncol = sum(penalty), dimnames = list(c(NULL), c(colnames(x)))))
+cv_mse <-
+  vector(mode = "double", length = 5)
 # Loop over folds
 cv_mse_lasso <- 
   reg_model(1)
@@ -1531,7 +1545,12 @@ coef_path_plot(1, bestlam_lasso, lasso_non0vars) +
     legend.position = c(0.8, 0.65),  
     legend.title = element_blank()
   )
-
+best.vars.shrinkage <- 
+  as_tibble(matrix(NA, nrow = k, ncol = sum(penalty), dimnames = list(c(NULL), c(colnames(x)))))
+coefs <- coef(mod_test1)
+coef_vector <- as.vector(coefs)
+names(coef_vector) <- rownames(coefs)
+best.vars.shrinkage[1,colnames(best.vars.shrinkage) %in% colnames(as_tibble_row(coef_vector))] <- as_tibble_row(coef_vector)[colnames(as_tibble_row(coef_vector)) %in% colnames(best.vars.shrinkage)]
 
 # Post-estimation
 library(sandwich)
