@@ -71,20 +71,28 @@ reg_model <- function(reg_type) {
 }
 
 # Function to plot coefficient path
-coef_path_plot <- function(mod_type, bestlam, threshold) {
+coef_path_plot <- function(mod_type, bestlam, threshold, control_vars = FALSE) {
 
   # Set up lambda grid
   grid <- 
     10^seq(5, -2, length = 100)
   
-  # Compute model
-  model <- 
-    glmnet(x, y, alpha = mod_type, lambda = grid)
-  model.bestlam <- 
-    glmnet(x, y, alpha = mod_type, lambda = bestlam)
-  
-  selected_vars <- 
-    rownames(coef(model.bestlam))[abs(coef(model.bestlam)[1:length(coef(model.bestlam))]) > threshold & rownames(coef(model.bestlam)) != "(Intercept)"]
+  # Compute models
+  if(control_vars) {
+    model <- 
+      glmnet(x_controls, y, alpha = mod_type, lambda = grid, penalty.factor = penalty)
+    model.bestlam <- 
+      glmnet(x_controls, y, alpha = mod_type, lambda = bestlam, penalty.factor = penalty)
+    selected_vars <- 
+      rownames(coef(model.bestlam))[abs(coef(model.bestlam)[1:length(coef(model.bestlam))]) > threshold & !rownames(coef(model.bestlam)) %in% c("year_std", "(Intercept)") & !str_starts(rownames(coef(model.bestlam)), "donor_name")]
+  } else {
+    model <- 
+      glmnet(x, y, alpha = mod_type, lambda = grid)
+    model.bestlam <- 
+      glmnet(x, y, alpha = mod_type, lambda = bestlam)
+    selected_vars <- 
+      rownames(coef(model.bestlam))[abs(coef(model.bestlam)[1:length(coef(model.bestlam))]) > threshold & rownames(coef(model.bestlam)) != "(Intercept)"]
+  }
   
   beta_mat <- 
     as.matrix(model$beta)
@@ -111,7 +119,8 @@ coef_path_plot <- function(mod_type, bestlam, threshold) {
       keep = FALSE) %>% 
     mutate(
       log_lambda = log(lambda)
-    )
+    ) %>% 
+    filter(!str_starts(predictor, "donor_name") & predictor != "year_std")
   
   ggplot() +
     geom_line(
