@@ -1504,7 +1504,7 @@ ridge_bestlam <-
 # Plot lambda path and selection
 plot(cv.ridge)
 
-# Plot coefficient path
+# Plot coefficient path, WITHOUT control variables
 coef_path_plot(0, ridge_bestlam, 0.049)
 
 
@@ -1550,12 +1550,41 @@ lasso_coef <-
   filter(Coef != 0 & !Variable %in% c("year_std", "(Intercept)") & !str_starts(Variable, "donor_name")) %>% 
   arrange(desc(abs(Coef)))
 
-coef_path_plot(1, bestlam_lasso, 0, TRUE) # fix bestlam value...
+# Plot coefficient path, WITH control variables
+coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE)
 
 # Fit post-lasso OLS for interpretation
-lm.mod.lasso <-
-  lm(pledge_USD_cp_log ~ ., data = test %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
-summary(lm.mod.lasso)
+lm.formula.ve01 <-
+  as.formula(
+    paste0(
+      "pledge_USD_cp_log ~ donor_name + year_std + ", # outcome and control variables
+      paste0(cv_mse_results_ols %>% pluck(1), collapse = "+") # predictor variables
+      )
+    )
+lm.mod.ve01 <-
+  lm(
+    lm.formula.ve01,
+    data = test
+    )
+summary(lm.mod.ve01)
+
+lm.formula.ve02 <-
+  as.formula(
+    paste0(
+      "pledge_USD_cp_log ~ donor_name + year_std + ", # outcome and control variables
+      paste0(lasso_coef %>% pluck(1), collapse = "+") # predictor variables
+    )
+  )
+lm.mod.ve02 <-
+  lm(
+    lm.formula.ve02,
+    data = test
+  )
+summary(lm.mod.ve02)
+
+library(modelr)
+
+  
 
 # Post-estimation
 library(sandwich)

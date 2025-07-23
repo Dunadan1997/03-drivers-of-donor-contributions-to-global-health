@@ -75,7 +75,7 @@ coef_path_plot <- function(mod_type, bestlam, threshold, control_vars = FALSE) {
 
   # Set up lambda grid
   grid <- 
-    10^seq(5, -2, length = 100)
+    10^seq(5, -5, length = 100)
   
   # Compute models
   if(control_vars) {
