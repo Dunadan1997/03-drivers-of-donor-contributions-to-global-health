@@ -1360,15 +1360,14 @@ test <-
     oda_spent_log = log(oda_spent),
     gdp_per_cap_cp_log_rllavg02 = log(gdp_per_cap_cp_rllavg02),
     lr_all = mean(sum(lrgen_ches, lrgen_mp, lrecon_ches, na.rm = TRUE) / 3),
-    year_std = year-2000,
-    donor_name = str_replace_all(donor_name, " ", "_")
+    year_std = year-2000
     ) %>% 
   ungroup() %>% 
   filter(lr_all != 0) %>% 
 # Select relevant variables for modelling
   select(
     pledge_USD_cp_log, # outcome variable
-    year_std, starts_with("donor_name"), # control variables
+    year_std, "donor_name", # control variables
     other_orgs_cp_log, oda_spent_log, # aid financing variables
     ends_with("rllavg01"), # fiscal variables
     ends_with("rllavg02"), # macroeconomic variables
@@ -1379,7 +1378,8 @@ test <-
   na.omit() %>% 
   arrange(donor_name, year_std)
 
-test$donor_name <- relevel(as.factor(test$donor_name), ref = "Malta")
+test$donor_name <- 
+  relevel(as.factor(test$donor_name), ref = "Malta")
 
 # Set up cross-validation parameters
 k <- 5
@@ -1582,9 +1582,34 @@ lm.mod.ve02 <-
   )
 summary(lm.mod.ve02)
 
-library(modelr)
 
+library(modelr)
+# Examine residuals from both models
+test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1)) %>% gather_predictions(lm.mod.ve01, lm.mod.ve02) %>% select(pred, pledge_USD_cp_log, model, donor_name, year_std) %>% mutate(resid = pledge_USD_cp_log - pred) %>% filter(abs(resid) > 1)
+test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1)) %>% add_predictions(lm.mod.ve02) %>% add_residuals(lm.mod.ve02) %>% ggplot(aes(year_std)) + geom_point(aes(y = pledge_USD_cp_log)) + geom_point(aes(y = pred, size = abs(resid)), color = "red", alpha = 0.5)  
+test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1)) %>% mutate(donor_level = ifelse(donor_name %in% c("United States", "France", "United Kingdom", "Germany", "Japan"), "top5", "other")) %>% add_predictions(lm.mod.ve02) %>% add_residuals(lm.mod.ve02) %>% ggplot(aes(year_std, resid)) + geom_line(aes(color = donor_name), alpha = 1/3) + facet_wrap(~ donor_level) + geom_hline(yintercept = 0, color = "white", linewidth = 2) + scale_color_manual(values = c("United States" = red_shades[[2]])) + ylim(-2.5,2.5)
+
+df_models <- test[colnames(test) %in% c("pledge_USD_cp_log", "donor_name", "year_std", lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1))]
+list01 <- rep(list(1:n), n)
+list02 <- rep(list(1:n), n)
+list03 <- rep(list(1:n), n)
+
+set.seed(456)
+for (i in seq_along(list01)) {
+  sample <- test[-i,]
+  list01[[i]] <- sample
   
+  model_ve02 <- lm(lm.formula.ve02, data = list01[[i]])
+  list02[[i]] <- model_ve02
+  
+  model_ve01 <- lm(lm.formula.ve01, data = list01[[i]])
+  list03[[i]] <- model_ve01
+  
+}
+
+as_tibble_col(list02, column_name = "model_ve02") %>% mutate(fit = map(model_ve02, broom::glance)) %>% unnest(fit) %>% pluck(3) %>% mean()
+as_tibble_col(list03, column_name = "model_ve01") %>% mutate(fit = map(model_ve01, broom::glance)) %>% unnest(fit) %>% pluck(3) %>% mean()
+
 
 # Post-estimation
 library(sandwich)
@@ -1673,7 +1698,6 @@ ggplot(combined, aes(x = actual, y = predicted, color = Model)) +
   theme_minimal() +
   scale_color_manual(values = c("Full Model" = blue_shades[[3]], "Clean Model" = red_shades[[3]], "Robust Model" = yellow_shades[[3]]))
 
-# use Ridge model to predict, use (robust) OLS to interpret results
 
 
 
