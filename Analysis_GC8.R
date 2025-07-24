@@ -1605,7 +1605,7 @@ for (i in seq_along(list01)) {
   model_ve01 <- lm(lm.formula.ve01, data = list01[[i]])
   list03[[i]] <- model_ve01
   
-}
+} 
 
 as_tibble_col(list02, column_name = "model_ve02") %>% mutate(fit = map(model_ve02, broom::glance)) %>% unnest(fit) %>% pluck(3) %>% mean()
 as_tibble_col(list03, column_name = "model_ve01") %>% mutate(fit = map(model_ve01, broom::glance)) %>% unnest(fit) %>% pluck(3) %>% mean()
