@@ -1590,6 +1590,7 @@ test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1)
 test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1)) %>% mutate(donor_level = ifelse(donor_name %in% c("United States", "France", "United Kingdom", "Germany", "Japan"), "top5", "other")) %>% add_predictions(lm.mod.ve02) %>% add_residuals(lm.mod.ve02) %>% ggplot(aes(year_std, resid)) + geom_line(aes(color = donor_name), alpha = 1/3) + facet_wrap(~ donor_level) + geom_hline(yintercept = 0, color = "white", linewidth = 2) + scale_color_manual(values = c("United States" = red_shades[[2]])) + ylim(-2.5,2.5)
 
 df_models <- test[colnames(test) %in% c("pledge_USD_cp_log", "donor_name", "year_std", lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1))]
+boot_size <- 1000
 list01 <- rep(list(1:n), n)
 list02 <- rep(list(1:n), n)
 list03 <- rep(list(1:n), n)
@@ -1607,9 +1608,28 @@ for (i in seq_along(list01)) {
   
 } 
 
-as_tibble_col(list02, column_name = "model_ve02") %>% mutate(fit = map(model_ve02, broom::glance)) %>% unnest(fit) %>% pluck(3) %>% mean()
-as_tibble_col(list03, column_name = "model_ve01") %>% mutate(fit = map(model_ve01, broom::glance)) %>% unnest(fit) %>% pluck(3) %>% mean()
+boot_ve02 <- 
+  as_tibble_col(list02, column_name = "model_ve02") %>% 
+  mutate(fit = map(model_ve02, broom::glance)) %>% 
+  unnest(fit) %>% 
+  mutate(model = "ve02")
+boot_ve02 %>% pluck(3) %>% mean()
 
+boot_ve01 <-
+  as_tibble_col(list03, column_name = "model_ve01") %>% 
+  mutate(fit = map(model_ve01, broom::glance)) %>% 
+  unnest(fit) %>% 
+  mutate(model = "ve01")
+boot_ve01 %>% pluck(3) %>% mean()
+
+ggplot(
+  data = bind_rows(boot_ve01, boot_ve02) %>% 
+    select(model, adj.r.squared, p.value, AIC, BIC, deviance) %>% 
+    pivot_longer(cols = c("adj.r.squared", "p.value", "AIC", "BIC", "deviance"), names_to = "metric", values_to = "values"), 
+  aes(y = values, group = model)
+) + 
+  geom_boxplot() +
+  facet_wrap(~ metric, scales = "free")
 
 # Post-estimation
 library(sandwich)
