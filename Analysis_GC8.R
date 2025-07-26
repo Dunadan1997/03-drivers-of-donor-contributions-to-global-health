@@ -1594,38 +1594,64 @@ boot_size <- 1000
 list01 <- rep(list(1:n), n)
 list02 <- rep(list(1:n), n)
 list03 <- rep(list(1:n), n)
+vec01 <- vector("double", length = n)
+vec02 <- vector("double", length = n)
 
 set.seed(456)
 for (i in seq_along(list01)) {
-  sample <- test[-i,]
+  sample <- test[-i, ]
   list01[[i]] <- sample
   
   model_ve02 <- lm(lm.formula.ve02, data = list01[[i]])
   list02[[i]] <- model_ve02
   
+  vec02[i] <- tryCatch({
+    as_tibble_col(
+      predict(model_ve02, newdata = test[i,]),
+      column_name = "y_pred"
+    ) %>%
+      bind_cols(as_tibble_col(test$pledge_USD_cp_log[i], column_name = "y_actual")) %>%
+      mutate(mse = (y_actual - y_pred)^2) %>%
+      pluck(3)
+  }, error = function(e) {
+    NA  # return NA if prediction fails
+  })
+  
   model_ve01 <- lm(lm.formula.ve01, data = list01[[i]])
   list03[[i]] <- model_ve01
   
+  vec01[i] <- tryCatch({
+    as_tibble_col(
+      predict(model_ve01, newdata = test[i,]),
+      column_name = "y_pred"
+    ) %>%
+      bind_cols(as_tibble_col(test$pledge_USD_cp_log[i], column_name = "y_actual")) %>%
+      mutate(mse = (y_actual - y_pred)^2) %>%
+      pluck(3)
+  }, error = function(e) {
+    NA  # return NA if prediction fails
+  })
+  
 } 
-
-boot_ve02 <- 
-  as_tibble_col(list02, column_name = "model_ve02") %>% 
-  mutate(fit = map(model_ve02, broom::glance)) %>% 
-  unnest(fit) %>% 
-  mutate(model = "ve02")
-boot_ve02 %>% pluck(3) %>% mean()
 
 boot_ve01 <-
   as_tibble_col(list03, column_name = "model_ve01") %>% 
-  mutate(fit = map(model_ve01, broom::glance)) %>% 
+  mutate(fit = map(model_ve01, broom::glance), mse = vec01) %>% 
   unnest(fit) %>% 
   mutate(model = "ve01")
 boot_ve01 %>% pluck(3) %>% mean()
 
+boot_ve02 <- 
+  as_tibble_col(list02, column_name = "model_ve02") %>% 
+  mutate(fit = map(model_ve02, broom::glance), mse = vec02) %>% 
+  unnest(fit) %>% 
+  mutate(model = "ve02")
+boot_ve02 %>% pluck(3) %>% mean()
+
 ggplot(
-  data = bind_rows(boot_ve01, boot_ve02) %>% 
-    select(model, adj.r.squared, p.value, AIC, BIC, deviance) %>% 
-    pivot_longer(cols = c("adj.r.squared", "p.value", "AIC", "BIC", "deviance"), names_to = "metric", values_to = "values"), 
+  data = bind_rows(boot_ve01, boot_ve02) %>%
+    select(model, adj.r.squared, p.value, AIC, BIC, deviance, mse) %>%
+    pivot_longer(cols = c("adj.r.squared", "p.value", "AIC", "BIC", "deviance", "mse"), names_to = "metric", values_to = "values"), 
   aes(y = values, group = model)
 ) + 
   geom_boxplot() +
@@ -1634,6 +1660,8 @@ ggplot(
 # Post-estimation
 library(sandwich)
 library(lmtest)
+
+# Post-Estimation ---------------------------------------------------------
 
 # Non-linearity of the response-predictor relationships: SUCCESS
 plot(lm.mod.lasso, which = 1)

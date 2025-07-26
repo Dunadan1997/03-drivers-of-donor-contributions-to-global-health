@@ -564,6 +564,16 @@ Regression analysis also enables us to evaluate the reliability of our observati
 Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean.
 
 ## Methodolgy
+Before modeling, I performed some anticipatory transformations to the data. We used the US Federal Reserve Bank's price deflator to transform nominal dollar pledges into 2022 constant prices to limit the impact of currency fluctuations on the model. Additionally, we created a new variable calculating the average donor pledge to each development organization in our sample. This helped limit the impact of colinearity in the final model. We did the same with the different measures of party ideological orientation. Finally, we calculated the log of each dollar denominated variable to improve model performance. For economic indicators, we calculated the 3-year rolling average to account for the effect of previous economic performance on donor pledges during the replenishment year.
+
+Important to ask which model to use. Multiple are available. For sake of practicality, and given our small sample size (n = 141), I decided to opt for a multiple linear regression, over a multi-level model, which might have better modeled the structural nature of the data, though it may have under-performed due to the small number of donor observations. A multilevel model typically requires n observations per unit and n number of units to function properly (citation). 
+
+Thankfully, it is possible to account for the fixed-effects of the donor countries in a multiple linear regression by including the donor variable in the model, as well as the value of the replenishment year. This will help off-set the impact of country and time specific effects on the other coefficients, allowing us to have a cleaner view of the actual impact of predictors on the outcome of the replenishment.
+
+However, the introduction of donor countries as a control variable increases the number of variables in our model, as each donor country is represented as a separate variable in the model. The reliability of a model can be negatively impacted when the number of predictors is large in comparison to the number of observations. Moreover, we are including many predictors that may not have any relation with donor pledges, and including them may create unnecessary complexity in the resulting model.
+
+For these reasons, I used two methods to manage these issues: subset selection and shrinkage. The former involves predicting each possible combination of a model and keeping only the predictors in the model that performs best against the test data. The latter involves shrinking the predictors towards zero and identifying the level of shrinkage that performs best against the test data.
+
 Proceeded with subset selection and shrinkage methods to develop a model to accurately interpret the data and make reliable predictions. Important because 
 Used cross-validation approach on training data only to compare the performance of different models using the Mean Squared Error (MSE).
 
