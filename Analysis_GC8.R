@@ -1453,6 +1453,10 @@ for (j in 1:k) {
   
 }
 
+# Calculate mean MSE
+mean.cv.errors <-
+  apply(cv.errors, 2, mean)
+
 # Table with variables included in the best model based on adjr2
 cv_adjr2_results_ols <- 
   pivot_longer(
@@ -1482,6 +1486,8 @@ cv_mse_results_ols <-
 # Loop over folds
 cv_results_ridge <- 
   reg_model(0)
+cv_mse_ridge <-
+  cv_results_ridge$mse
 cv_results_ridge_tab <-
   pivot_longer(
     cv_results_ridge$vars, 
@@ -1513,6 +1519,8 @@ coef_path_plot(0, ridge_bestlam, 0.049)
 # Loop over training data, WITHOUT control variables
 cv_results_lasso <- 
   reg_model(1)
+cv_mse_lasso <-
+  cv_results_lasso$mse
 cv_results_lasso_tab <-
   pivot_longer(
     cv_results_lasso$vars, 
@@ -1664,41 +1672,41 @@ library(lmtest)
 # Post-Estimation ---------------------------------------------------------
 
 # Non-linearity of the response-predictor relationships: SUCCESS
-plot(lm.mod.lasso, which = 1)
-car::crPlots(lm.mod.lasso, layout = c(4, 3))
+plot(lm.mod.ve02, which = 1)
+car::crPlots(lm.mod.ve02, layout = c(4, 3))
 
 # Correlation of error terms: PARTIAL SUCCESS, but MITIGATED with Robust SEs
 dev.off()
-plot(residuals(lm.mod.lasso), type = "l",
+plot(residuals(lm.mod.ve02), type = "l",
      main = "Residuals over Observations",
      xlab = "Observation index",
      ylab = "Residuals")
 abline(h = 0, col = "red", lty = 2)
-acf(residuals(lm.mod.lasso), main = "ACF of Residuals")
-resids <- residuals(lm.mod.lasso)
+acf(residuals(lm.mod.ve02), main = "ACF of Residuals")
+resids <- residuals(lm.mod.ve02)
 cor(1:length(resids), resids)
-lmtest::dwtest(lm.mod.lasso)
+lmtest::dwtest(lm.mod.ve02)
 
 # Non-constant variance of error terms: SUCCESS
-plot(lm.mod.lasso, which = 3)
-lmtest::bptest(lm.mod.lasso)
+plot(lm.mod.ve02, which = 3)
+lmtest::bptest(lm.mod.ve02)
 
 # Outliers: FAIL (3 outliers) but NEGLIGEABLE impact
-plot(lm.mod.lasso, which = 5)
+plot(lm.mod.ve02, which = 5)
 test %>% slice(c(36, 111, 132))
 
 # High-leverage points: FAIL (9 high leverage points) but NEGLIGEABLE impact
-leverage <- hatvalues(lm.mod.lasso)
+leverage <- hatvalues(lm.mod.ve02)
 high_leverage <- which(leverage > (2 * mean(leverage)))
 test[high_leverage, ]
 
 # Collinearity: FAIL (2 problematic) but JUSTIFIED
-vif_values <- car::vif(lm.mod.lasso)
+vif_values <- car::vif(lm.mod.ve02)
 rownames_to_column(as.data.frame(vif_values), var = "rowname") %>% filter(`GVIF^(1/(2*Df))` > 5)
 
 # Calculate robust SEs to account for auto-correlation of error terms
 lm.mod.lasso.robust <- 
-  lmtest::coeftest(lm.mod.lasso, vcov = sandwich::vcovCL(lm.mod.lasso, cluster = ~ donor_name))
+  lmtest::coeftest(lm.mod.ve02, vcov = sandwich::vcovCL(lm.mod.ve02, cluster = ~ donor_name))
 lm.mod.lasso.robust
 
 
@@ -1709,12 +1717,12 @@ model_clean <- lm(pledge_USD_cp_log ~ ., data = test[-high_leverage,] %>% select
 rmse <- function(model) {
   sqrt(mean(residuals(model)^2))
 }
-rmse(lm.mod.lasso)
+rmse(lm.mod.ve02)
 rmse(model_robust)
 rmse(model_clean)
 
 # Get predicted values
-test$pred_full <- predict(lm.mod.lasso)
+test$pred_full <- predict(lm.mod.ve02)
 test_clean <- test[-high_leverage, ]  # remove high leverage points
 test_clean$pred_clean <- predict(model_clean)
 test_robust <- test

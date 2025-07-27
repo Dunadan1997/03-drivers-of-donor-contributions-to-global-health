@@ -1,5 +1,5 @@
 ---
-title: "Replenishing Hope: Political and Economic Drivers of Public Sector Support for The Global Fund"
+title: "Replenishing Hope: Political and Economic Drivers of Public Sector Contributions to The Global Fund"
 date: 2025-03-23
 author: "Bruno Alves de Carvalho"
 output: pdf_document
@@ -572,12 +572,15 @@ Thankfully, it is possible to account for the fixed-effects of the donor countri
 
 However, the introduction of donor countries as a control variable increases the number of variables in our model, as each donor country is represented as a separate variable in the model. The reliability of a model can be negatively impacted when the number of predictors is large in comparison to the number of observations. Moreover, we are including many predictors that may not have any relation with donor pledges, and including them may create unnecessary complexity in the resulting model.
 
-For these reasons, I used two methods to manage these issues: subset selection and shrinkage. The former involves predicting each possible combination of a model and keeping only the predictors in the model that performs best against the test data. The latter involves shrinking the predictors towards zero and identifying the level of shrinkage that performs best against the test data.
+For these reasons, I used two methods to manage these issues: forward stepwise selection and shrinkage. The former involves beginning with a model containing no predictors and then adding one predictor at a time, starting with the predictor that gives the greatest additional improvement to the fit. The objective being to identify the model with a subset of the predictors that performs best against the test data. The latter involves shrinking the predictors towards zero and identifying the level of shrinkage that performs best against the test data. This is a well known technique used to mitigate high variance, which can help improve the reliability of a model. There two best-known shrinkage types are the ridge regression and the lasso. We used both but have a preference for the lasso because it has the added advantage of performing variable selection by actually shrinking irrelevant predictors to exactly zero, hence facilitating the interpretation of the model results. Additionally, we have reasons to believe the lasso will perform better than the ridge regression because our descriptive analysis has shown that donor pledges seem to be strongly associated with a small subset of predictors, namely the amount spend on ODA and the financial contribution to other international development organizations like The Global Fund.
 
-Proceeded with subset selection and shrinkage methods to develop a model to accurately interpret the data and make reliable predictions. Important because 
-Used cross-validation approach on training data only to compare the performance of different models using the Mean Squared Error (MSE).
+To compare the performance of these three different modeling techniques, we used a re-sampling method known as cross-validation. This involves repeatedly drawing a sample of the data, refitting the model on each sample, and testing each model on the rest of the data. In other words, cross-validation involves randomly dividing the data into a training and validation set, allowing us to assess the performance of a model trained on the training set and tested on the validation set. The purpose of cross-validation is to simulate real life. Instead of fitting the model on the whole data from the start, we can learn a great deal about how accurate and reliable our model is likely to be by training it on a sample of our data and testing it on "new" data, that is, the data we left out. The challenge of many statistical models based on a sample of a wider population is generalizability: will your model behave the same with new data? The cross-validation approach allows us to mimic this. 
 
-```{r}
+We opted for a 5-fold cross-validation, randomly splitting observations into five non-overlapping validation groups. After running each model, we compared them using the Mean Squared Error (MSE), a measure of the validation set error rate, that is, how close the model predictions match the actual pledges of the new test data. The smaller the MSE the better.
+
+The results show that the multiple linear regression, or OLS (for Ordinary Least Squares), performed on average better than the ridge regression and lasso when fitted against the validation set. The ridge regression performed the least well, with the lasso performing bang in the middle. At first, this shows that a full model like the ridge regression, even if it shrinks predictors, tends to underperform against models that select a subset of predictors. Additionally, it doesn't seem like the shrinkage, whether in the ridge or lasso, provides an edge over the multiple linear regression combined with stepwise selection.
+
+```{r table 1}
 # Create a data frame with MSE results
 mse_results <- data.frame(
   OLS = round(min(mean.cv.errors), 2), 
@@ -589,6 +592,7 @@ mse_results <- data.frame(
 kable(mse_results, caption = "Mean Squared Error by Model")
 ```
 
+If we examine which variables were included in the best OLS model, we observe that...
 
 This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.
 
