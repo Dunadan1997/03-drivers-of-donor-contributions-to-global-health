@@ -18,6 +18,7 @@ showtext_auto()
 
 # Load clean data
 source("Analysis_GC8.R")
+source("Functions_GC8.R")
 ```
 
 ## Summary
@@ -612,7 +613,7 @@ We will now run the OLS and lasso models again with the control variables and co
 
 Examining the lasso first, (compare coefficients between OLS and Lasso).
 
-```{r table 5 and plot}
+```{r table 5 and 6}
 kable(lasso_coef, caption = "Table 7: ")
 kable(ols_coef, caption = "Table 6: ")
 
