@@ -576,7 +576,7 @@ For these reasons, I used two methods to manage these issues: forward stepwise s
 
 To compare the performance of these three different modeling techniques, we used a re-sampling method known as cross-validation. This involves repeatedly drawing a sample of the data, refitting the model on each sample, and testing each model on the rest of the data. In other words, cross-validation involves randomly dividing the data into a training and validation set, allowing us to assess the performance of a model trained on the training set and tested on the validation set. The purpose of cross-validation is to simulate real life. Instead of fitting the model on the whole data from the start, we can learn a great deal about how accurate and reliable our model is likely to be by training it on a sample of our data and testing it on "new" data, that is, the data we left out. The challenge of many statistical models based on a sample of a wider population is generalizability: will your model behave the same with new data? The cross-validation approach allows us to mimic this. 
 
-We opted for a 5-fold cross-validation, randomly splitting observations into five non-overlapping validation groups. After running each model, we compared them using the Mean Squared Error (MSE), a measure of the validation set error rate, that is, how close the model predictions match the actual pledges of the new test data. The smaller the MSE the better.
+We opted for a 5-fold cross-validation, randomly splitting observations into five non-overlapping validation groups. After running each model, we compared them using the Mean Squared Error (MSE), a measure of the validation set error rate, that is, how close the model predictions match the actual pledges of the new test data. The smaller the MSE the better. Before jumping into the cross-validation results, it is important to note that we excluded the control variables, namely the donor countries and the replenishment year, from this initial phase of the variable selection process. This is because all control variables need to be included in the final model, regardless of their significance, if we want to control for country and time specific noises in the data.
 
 The results show that the multiple linear regression, or OLS (for Ordinary Least Squares), performed on average better than the ridge regression and lasso when fitted against the validation set. The ridge regression performed the least well, with the lasso performing bang in the middle. At first, this shows that a full model like the ridge regression, even if it shrinks predictors, tends to underperform against models that select a subset of predictors. Additionally, it doesn't seem like the shrinkage, whether in the ridge or lasso, provides an edge over the multiple linear regression combined with stepwise selection.
 
@@ -589,10 +589,37 @@ mse_results <- data.frame(
 )
 
 # Print the table
-kable(mse_results, caption = "Mean Squared Error by Model")
+kable(mse_results, caption = "Table 1: Mean Squared Error by Model")
 ```
 
-If we examine which variables were included in the best OLS model, we observe that...
+If we examine which variables were included in the OLS model with the lowest MSE in each fold, we observe that, 5 out of 5 times, the model contains the value spent on ODA and the financial contributions to other development organizations by donor countries. Other economic and political factors are also included, but less often. Some variables are behaving strangely as compared to our descriptive analysis, though. We did not expect the unemployment rate to be positively related to pledges, neither did we expect the % change in GDP to be positively associated with pledges, even though this was our initial hypothesis.
+
+```{r table 2}
+kable(cv_mse_results_ols, caption = "Table 2: Predictors Included in Best OLS model")
+```
+
+Interestingly, the six variables included in one or more of the best OLS models correspond with the top six stronger predictors in the ridge regression and lasso (see table 3 and 4), though the lasso tends to include more variables in more of its models than the OLS. Each of these six predictors also seem to be behaving in the same direction. This leads us to think that the final model would have to include either all or at least some of these six variables: ODA disbursements, financial contributions to other development organizations, GDP per Capita, % Change in GDP, election year, and the unemployment rate.
+
+```{r table 3 and 4}
+kable(cv_results_ridge_tab, caption = "Table 3: Predictors Included in Best Ridge Regression")
+
+kable(cv_results_lasso_tab, caption = "Table 4: Predictors Included in Best Lasso")
+```
+
+The variable selection conducted by the lasso has the advantage of being less restrictive than the one done by the OLS, without necessarily sacrificing too much predictive accuracy. It is therefore worth keeping it for the moment, unlike the ridge regression which includes all variables but suffers from the lowest predictive accuracy. 
+
+We will now run the OLS and lasso models again with the control variables and compare their output. Variables selected at least once in the previous OLS are included in this new regression model. The lasso is run on all predictors again, but this time including the control variables.
+
+Examining the lasso first, (compare coefficients between OLS and Lasso).
+
+```{r table 5 and plot}
+kable(lasso_coef, caption = "Table 7: ")
+kable(ols_coef, caption = "Table 6: ")
+
+coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + xlim(-10, 0)
+```
+
+We basically end up with two final models with a subset of predictors, one achieved through forward step-wise selection and the other via the lasso.
 
 This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.
 

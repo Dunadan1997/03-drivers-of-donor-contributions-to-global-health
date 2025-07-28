@@ -1559,7 +1559,7 @@ lasso_coef <-
   arrange(desc(abs(Coef)))
 
 # Plot coefficient path, WITH control variables
-coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE)
+coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + xlim(-10, 0)
 
 # Fit post-lasso OLS for interpretation
 lm.formula.ve01 <-
@@ -1575,6 +1575,10 @@ lm.mod.ve01 <-
     data = test
     )
 summary(lm.mod.ve01)
+ols_coef <-
+  lm.mod.ve01$coefficients %>% 
+  enframe(name = "Variables", value = "Coef") %>% 
+  filter(!startsWith(Variables, "donor_name") & !Variables %in% c("year_std", "(Intercept)"))
 
 lm.formula.ve02 <-
   as.formula(
