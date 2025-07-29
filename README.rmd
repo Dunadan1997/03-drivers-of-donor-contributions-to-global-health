@@ -8,7 +8,7 @@ mainfont: "Arial"
 
 ```{r setup, include=FALSE}
 # Set up r-markdown
-knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
 
 # Set up font
 library(showtext)
@@ -609,9 +609,14 @@ kable(cv_results_lasso_tab, caption = "Table 4: Predictors Included in Best Lass
 
 The variable selection conducted by the lasso has the advantage of being less restrictive than the one done by the OLS, without necessarily sacrificing too much predictive accuracy. It is therefore worth keeping it for the moment, unlike the ridge regression which includes all variables but suffers from the lowest predictive accuracy. 
 
-We will now run the OLS and lasso models again with the control variables and compare their output. Variables selected at least once in the previous OLS are included in this new regression model. The lasso is run on all predictors again, but this time including the control variables.
+We will now run the OLS and lasso models again with the control variables and compare their output. Variables selected at least once in the cross-validation of the OLS are included in this new regression model. The lasso is run on all predictors again, but this time the model includes control variables.
 
-Examining the lasso first, (compare coefficients between OLS and Lasso).
+Examining the lasso first, we see that a shorter list of variables was selected, suggesting the control factors removed some noise from the model. The coefficient path plot shows how the variables behave depending on the shrinkage value, called lambda. The optimal lambda value highlighted by a black vertical line indicates the level of shrinkage that delivers the highest predictive accuracy. All non-zero variables at that lambda value indicate a relevant signal, as opposed to zeroed-out variables, highlighted in grey, which are considered to be noise.
+
+Similarly, the strength of the predictors was also refined, with the coeficient for contributions to other development organizations cut almost by half, from 0.66 to 0.38. Other variables were strengthened, with the coeficient of election year nearly doubling from 0.098 to 0.17. Surprisingly, the lasso shrank the GDP per capita to zero, even though it had appeared a strong predictor in all model types prior to adding the controls. Additionally, some predictors are behaving unexpectedly. For example, we would expect the adjusted fiscal balance and the primary fiscal balance to have the same directional association with pledges, but the first is negative and the second is positive. Yet, some variables who behaved strangely in the first lasso model now seem to behave as expected, such as the unemployment rate which is now negatively associated with pledges.
+
+Switching to the OLS model, we can see similar changes. The coefficient strength of the ODA disbursements and contributions to other organizations are reduced by a similar proportion, though they remain the strongest overall predictors of pledges in both the lasso and OLS. Both the % Change in GDP and the Unemployment Rate now seem to be behaving as we would expect from our descriptive analysis. 
+What is most encouraging is that the direction and coefficient value are pretty much aligned between the variables selected in both the OLS and Lasso. The two models seem distinguished only by their complexity, with the lasso selecting a higher level of flexibility than the OLS.
 
 ```{r table 5 and 6}
 kable(lasso_coef, caption = "Table 7: ")
