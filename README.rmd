@@ -615,8 +615,7 @@ Examining the lasso first, we see that a shorter list of variables was selected,
 
 Similarly, the strength of the predictors was also refined, with the coeficient for contributions to other development organizations cut almost by half, from 0.66 to 0.38. Other variables were strengthened, with the coeficient of election year nearly doubling from 0.098 to 0.17. Surprisingly, the lasso shrank the GDP per capita to zero, even though it had appeared a strong predictor in all model types prior to adding the controls. Additionally, some predictors are behaving unexpectedly. For example, we would expect the adjusted fiscal balance and the primary fiscal balance to have the same directional association with pledges, but the first is negative and the second is positive. Yet, some variables who behaved strangely in the first lasso model now seem to behave as expected, such as the unemployment rate which is now negatively associated with pledges.
 
-Switching to the OLS model, we can see similar changes. The coefficient strength of the ODA disbursements and contributions to other organizations are reduced by a similar proportion, though they remain the strongest overall predictors of pledges in both the lasso and OLS. Both the % Change in GDP and the Unemployment Rate now seem to be behaving as we would expect from our descriptive analysis. 
-What is most encouraging is that the direction and coefficient value are pretty much aligned between the variables selected in both the OLS and Lasso. The two models seem distinguished only by their complexity, with the lasso selecting a higher level of flexibility than the OLS.
+Switching to the OLS model, we can see similar changes. The coefficient strength of the ODA disbursements and contributions to other organizations are reduced by a similar proportion, though they remain the strongest overall predictors of pledges in both the lasso and OLS. Both the % Change in GDP and the Unemployment Rate now seem to be behaving as we would expect from our descriptive analysis.
 
 ```{r table 5 and 6}
 kable(lasso_coef, caption = "Table 7: ")
@@ -625,7 +624,87 @@ kable(ols_coef, caption = "Table 6: ")
 coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + xlim(-10, 0)
 ```
 
-We basically end up with two final models with a subset of predictors, one achieved through forward step-wise selection and the other via the lasso.
+What is most encouraging is that the OLS and lasso yield broadly consistent signs for the predictors. To decide which final model to select, we opted to first compare the predictive performance of the lasso against a post-lasso OLS using Leave-One-Out cross-validation (LOOCV). Note this isn't an ideal scenario because we have already trained the models on the full data, meaning this does not constitute a true test, and results should be interpreted as indicative. 
+
+The reason we want to run this comparison first is to see if the lasso's regularization actually improve predictive accuracy. What we found is the post-Lasso OLS model outperformed the penalized Lasso model itself. This suggests that the bias introduced by shrinkage outweighed its potential benefits in reducing variance. This is further corroborated by the fact that the OLS model also performed better than the lasso. Given that the ratio of predictors to observations remains small in our dataset, and because we have constrained some variables with penalty factors, meaning they are always included, this may have reduced the effective “dimensionality” of the problem, possibly making the penalty less critical. In this context, Lasso’s main advantage (shrinkage for stability in high-dimensional settings) might not provide much benefit. 
+
+We are left with two models: the forward step-wise OLS and the post-lasso OLS. When comparing the performance of the two models against key metrics using LOOCV, we find that the post-lasso OLS out performs the OLS consistently. The subset selection achieved by the lasso seems to outperform the forward step-wise selection, when control variables are included. Our final model is therefore the post-OLS lasso. 
+
+```{r table 7}
+# Create a data frame with MSE results
+mse_results_2 <- data.frame(
+  Lasso = boot_ve03 %>% pluck(5) %>% mean(na.rm = TRUE), 
+  `Post-Lasso OLS` = boot_ve02 %>% pluck(14) %>% mean(na.rm = TRUE), 
+  OLS = boot_ve01 %>% pluck(14) %>% mean(na.rm = TRUE)
+)
+
+ggplot(
+  data = bind_rows(boot_ve01, boot_ve02, boot_ve03) %>%
+    select(model, adj.r.squared, p.value, AIC, BIC, deviance) %>%
+    pivot_longer(cols = c("adj.r.squared", "p.value", "AIC", "BIC", "deviance"), names_to = "metric", values_to = "values"), 
+  aes(y = values, group = model)
+  ) + 
+  geom_boxplot() +
+  facet_wrap(~ metric, scales= "free")
+```
+
+Now that we selected our model, the next step is to run some post-estimation tests to see if the model is aligned with assumptions underlying the OLS and to identify any other problems that may undermine the reliability of the model coefficients and predictions. The OLS has six classical assumptions:
+1. Linearity of the response-predictor relationships
+2. Random sampling
+3. No perfect collinearity
+4. Zero conditional mean
+5. Homoskedasticity, or the constant variance of error terms 
+6. Normality
+
+We can plot the residuals of the model against the fitted values to estimate the linearity of the response-predictor relationship. If the plot does not indicate any pattern, then the linearity assumption is respected. In our case, the red line in plot # is flat, indicating that the relationship between the pledges and the predictors is linear. Plot # shows this relationship is broadly linear for all predictors. The OLS is therefore an appropriate technique to model the relationship between pledges and the economic and political factors we selected.
+
+Our dataset includes data on the # donor countries, including all the largest donors. It is therefore representative of The Global Fund's donor base. However, there a related issue which is the correlation of error terms. Because we have a combination of panel and time series data, our observations may be somewhat correlated. We can examine this using a visual and statistical test. The visual seems to reveal no obvious relationship between the error terms. When running the Durbin-Watson test, we find that we cannot reject the null hypothesis that the true autocorrelation is 0 (p-value = 0.09275) at a 5% significance level. Despite successfully passing this test, we may still want to use robust standard errors as we will see later.
+
+```{r plot 14 & 15}
+# assumption 1
+plot(lm.mod.ve02, which = 1)
+
+# assumption 2
+acf(residuals(lm.mod.ve02), main = "ACF of Residuals")
+resids <- residuals(lm.mod.ve02)
+cor(1:length(resids), resids)
+plot(residuals(lm.mod.ve02), type = "l",
+     main = paste0("Residuals over Observations\n(", "corr ", round(cor(1:length(resids), resids), 3),")"),
+     xlab = "Observation index",
+     ylab = "Residuals")
+abline(h = 0, col = "red", lty = 2)
+```
+
+No predictor is an exact linear combination of one or more other predictors in our post-lasso OLS, although the financial contributions made by donor countries to other multilateral organizations like TGF is highly correlated with their ODA disbursements (corr 0.95). This is a practical issue rather than a violation of the classic linear regression assumptions. We conducted a VIF test to quantify the magnitude of the multi-collinearity and find that, even if it is far from extreme, it is somewhat problematic. A VIF value above 5 requires consideration and justification. The easiest solution would be to remove one of the two predictors, but that would impact the explanatory potential of our model, because we want to be able to distinguish the value disbursed annually by donor countries to ODA from the contributions they pledged, but have not necessarily spent, to organizations similar to The Global Fund on a cyclical basis. We therefore believe it is justified to retain both predictors in the model and to caveat that the estimates for these factors might be slightly exaggerated. 
+
+Another key assumption is what is left unexplained in our model, known as the error term or noise, is random and unrelated to our predictors. Basically, we don't want our model to miss a hidden pattern, the omission of which may erroneously distort our results. The key to this assumption is ensuring all key predictors are included in the model. By including a multitude of political and economic factors thought in the industry to be related to TGF's replenishment outcome, I hope to have mitigated this issue enough to ensure causal validity.
+
+There are practical ways to estimate if we have omitted significant variables from our model. One of them is to check the residuals against the fitted values. We saw previously that the relationship between the predictors and our outcome was broadly linear. When we examine each predictor individually, we notice this is broadly the case for each predictor. The time variable, year, does appear to have a very slight convex relationship. We can introduce a polynomial term with limited impact to the existing fit and assumptions of the model, while centering the variable to keep multi-collinearity stable. 
+
+Finally, the "Ramsey" test provides a statistical means to check whether omitted non-linearities remain in the error term. The test result suggests the model likely does not omit important information (p-value = 0.56). In sum, it seems reasonable to assume that our model does not violate the zero conditional mean assumption. 
+
+```{r table 8 & plot 16}
+vif_values_ve02 
+
+car::crPlots(lm.mod.ve02, layout = c(4, 3))
+vif_values_ve03
+```
+
+A remaining assumption of Linear regression is homoskedasticity. We can visually examine if our model violates this assumption by plotting the standardized residuals against the fitted values. If the residual plot shows a funnel shape, then our model suffers from heteroskedasticity, meaning the variance in the error terms is not constant across the spectrum of our outcome variable. Thankfully, plot # shows our model does not violate homoskedasticity. The studentized Breusch-Pagan test, which allows us to test for heteroskedasticity statistically, suggests that our model does not break this assumption (p-value = 0.44).
+
+The final assumption to address is normality of the error terms. Basically, our residuals should be distributed like a bell curve. Given our medium sample size, this assumption is not strictly required if we want valid inferences, but since it underpins key features of our model such as statistical significance and confidence intervals, we still think it's worth examining. 
+
+Normality can be gauged through a Q-Q plot. If the standardized residuals fall along the dotted line, then the normality assumption is respected. In our case, plot # shows this is mostly the case. Residuals at the tail often deviate from the dotted line, so this is not abnormal. There is no S-shape. Calculating Kurtosis and Skewness of the residuals also provides a numerical way to check for normality. A skewness of -0.41 indicates that our residuals are approximately symmetric. The Kurtosis does seem to indicate a heavier tail, which is also visible from the Q-Q plot. Notice that the bottom tail tends to deviate from the line. This signals some outlier risk.
+
+Investigate outliers and high-leverage points, and suggest Robust SEs as solution...
+
+Having said that, our model does not break the normality in any meaningful way. More broadly, it approximately respects all classical assumptions of a linear regression, meaning we can leverage the model to draw inferences and make predictions with reasonable confidence.
+
+
+```{r plot 17}
+plot(lm.mod.ve03, which = 5)
+
+```
 
 This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.
 
