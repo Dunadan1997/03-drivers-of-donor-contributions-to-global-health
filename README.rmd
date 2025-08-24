@@ -660,14 +660,13 @@ We can plot the residuals of the model against the fitted values to estimate the
 
 Our dataset includes data on the # donor countries, including all the largest donors. It is therefore representative of The Global Fund's donor base. However, there a related issue which is the correlation of error terms. Because we have a combination of panel and time series data, our observations may be somewhat correlated. We can examine this using a visual and statistical test. The visual seems to reveal no obvious relationship between the error terms. When running the Durbin-Watson test, we find that we cannot reject the null hypothesis that the true autocorrelation is 0 (p-value = 0.09275) at a 5% significance level. Despite successfully passing this test, we may still want to use robust standard errors as we will see later.
 
-```{r plot 14 & 15}
+```{r plot 14 and 15}
 # assumption 1
 plot(lm.mod.ve02, which = 1)
 
 # assumption 2
 acf(residuals(lm.mod.ve02), main = "ACF of Residuals")
 resids <- residuals(lm.mod.ve02)
-cor(1:length(resids), resids)
 plot(residuals(lm.mod.ve02), type = "l",
      main = paste0("Residuals over Observations\n(", "corr ", round(cor(1:length(resids), resids), 3),")"),
      xlab = "Observation index",
@@ -683,7 +682,7 @@ There are practical ways to estimate if we have omitted significant variables fr
 
 Finally, the "Ramsey" test provides a statistical means to check whether omitted non-linearities remain in the error term. The test result suggests the model likely does not omit important information (p-value = 0.56). In sum, it seems reasonable to assume that our model does not violate the zero conditional mean assumption. 
 
-```{r table 8 & plot 16}
+```{r table 8 and plot 16}
 vif_values_ve02 
 
 car::crPlots(lm.mod.ve02, layout = c(4, 3))
@@ -694,16 +693,36 @@ A remaining assumption of Linear regression is homoskedasticity. We can visually
 
 The final assumption to address is normality of the error terms. Basically, our residuals should be distributed like a bell curve. Given our medium sample size, this assumption is not strictly required if we want valid inferences, but since it underpins key features of our model such as statistical significance and confidence intervals, we still think it's worth examining. 
 
-Normality can be gauged through a Q-Q plot. If the standardized residuals fall along the dotted line, then the normality assumption is respected. In our case, plot # shows this is mostly the case. Residuals at the tail often deviate from the dotted line, so this is not abnormal. There is no S-shape. Calculating Kurtosis and Skewness of the residuals also provides a numerical way to check for normality. A skewness of -0.41 indicates that our residuals are approximately symmetric. The Kurtosis does seem to indicate a heavier tail, which is also visible from the Q-Q plot. Notice that the bottom tail tends to deviate from the line. This signals some outlier risk.
+Normality can be gauged through a Q-Q plot. If the standardized residuals fall along the dotted line, then the normality assumption is respected. In our case, plot # shows this is mostly the case. Residuals at the tail often deviate from the dotted line, so this is not abnormal. There is no S-shape. Calculating Kurtosis and Skewness of the residuals also provides a numerical way to check for normality. A skewness of -0.41 indicates that our residuals are approximately symmetric. The Kurtosis does seem to indicate a heavier tail, which is also visible from the Q-Q plot. Notice that the bottom tail tends to deviate from the line. Although this signals some outlier risk, our model does not break the normality assumption in any meaningful way.
 
-Investigate outliers and high-leverage points, and suggest Robust SEs as solution...
+Speaking of outliers, these are predictions that substantially deviate from the actual value observed in the date. We can identify outliers by dividing each residual by its estimated standard error. This computes the studendized or standardized residuals, which allows comparison of residuals across observations. Any studendized value above three are possible outliers (James et al., 2021, 98). Plot # highlights two outliers. The model significantly overestimates the pledge, measured in constant prices from 2022, from the US in 2005, while underestimating the pledge from Italy in 2001. 
 
-Having said that, our model does not break the normality in any meaningful way. More broadly, it approximately respects all classical assumptions of a linear regression, meaning we can leverage the model to draw inferences and make predictions with reasonable confidence.
+Although removing these two outliers slightly improves the model's fit (see table #), it is not recommended to exclude them from the model. Unless outliers are caused by an error in the data collection, they generally highlight a possible deficiency in the model, like a missing predictor. 
 
+Besides outliers, it is also important to screen the model for predictions that are large relative to other observations. Such high leverage points, as they are called, tend to have a sizable impact on the model's fit. We can identify these points using the leverage statistic. Any value at least two times the average leverage indicates a high leverage point. I identified nine such points in table #.
+
+Because Austria, Cyprus, Iceland, and Poland only donated once to The Global Fund, these observations lie exactly on a unique combination of predictors that no other observation shares, hence why the model prediction is equal to the underlying observation. 
+
+Since neither the outliers nor the high leverage points are data collection anomalies, and because they represent meaningful donor-year cases and are genuinely part of the Global Fund history, we cannot simply drop them from the model. Moreover, we saw that the outliers did not have an outsized impact on the model fit. This is also the case for the majority of the high leverage points. The residuals are mostly zero or very low, indicating these leverage points do not have a strong influence on the model fit. Dropping the high leverage points also does not have a significant impact on the goodness of the model fit (see table #). 
+
+For these reasons, I have decided to include these observations in the final model. To mitigate any risk, however, we computed a robust regression, which downweights high leverage and outlier cases. This ensures we can rely on the model coefficients and their significance with a reasonable level of confidence.
+
+In sum, our post-lasso model approximately respects all classical assumptions of a linear regression, meaning we can leverage the model to draw inferences and make predictions with reasonable confidence.
+
+To-dos: calculate robust regression, review methodology, and show results / predictions.
 
 ```{r plot 17}
 plot(lm.mod.ve03, which = 5)
 
+# identify outliers
+outliers
+# compare model with and without outliers
+tibble(model = c(list(lm.mod.ve03), list(lm.mod.ve04))) %>% mutate(version = c("ve03", "ve04"), glance = map(model, glance)) %>% unnest(glance) %>% select(version, adj.r.squared, AIC, BIC, sigma)
+
+# identify high leverage points
+high_leverage
+# compare model with and without outliers
+tibble(model = c(list(lm.mod.ve03), list(lm.mod.ve05))) %>% mutate(version = c("ve03", "ve05"), glance = map(model, glance)) %>% unnest(glance) %>% select(version, adj.r.squared, AIC, BIC, sigma)
 ```
 
 This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.

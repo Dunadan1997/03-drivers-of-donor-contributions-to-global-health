@@ -6,6 +6,7 @@
 
 # Load packages
 library(tidyverse)
+library(broom)
 library(slider)
 library(stringi)
 library(patchwork)
@@ -1715,13 +1716,13 @@ car::crPlots(lm.mod.ve02, layout = c(4, 3))
 
 # Correlation of error terms: PARTIAL SUCCESS, but MITIGATED with Robust SEs
 dev.off()
+resids <- residuals(lm.mod.ve02)
 plot(residuals(lm.mod.ve02), type = "l",
      main = paste0("Residuals over Observations\n(", "corr ", round(cor(1:length(resids), resids), 3),")"),
      xlab = "Observation index",
      ylab = "Residuals")
 abline(h = 0, col = "red", lty = 2)
 acf(residuals(lm.mod.ve02), main = "ACF of Residuals")
-resids <- residuals(lm.mod.ve02)
 cor(1:length(resids), resids)
 lmtest::dwtest(lm.mod.ve02)
 
@@ -1748,13 +1749,41 @@ plot(lm.mod.ve03, which = 3)
 lmtest::bptest(lm.mod.ve03)
 
 # Outliers: FAIL (3 outliers) but NEGLIGEABLE impact
-plot(lm.mod.ve03, which = 5)
-test %>% slice(c(36, 111, 132))
+stud_res <- rstudent(lm.mod.ve03)
+fits <- fitted(lm.mod.ve03)
+plot(fits, stud_res,
+     xlab = "Fitted Values",
+     ylab = "Studentized Residuals",
+     main = "Studentized Residuals vs Fitted")
+abline(h = 0, col = "red", lty = 2)
+abline(h = c(-3, 3), col = "blue", lty = 2)
+outliers <- 
+  test %>% 
+  bind_cols(tibble(fits = fits)) %>%
+  slice(which(abs(stud_res)>3)) %>% 
+  mutate(year = year_std+2000, pledge_USD_cp = exp(pledge_USD_cp_log), fits = exp(fits)) %>% 
+  select(pledge_USD_cp, fits, year, donor_name)
+lm.mod.ve04 <-
+  lm(
+    lm.formula.ve03,
+    data = test[-which(abs(stud_res)>3),]
+  )
 
 # High-leverage points: FAIL (9 high leverage points) but NEGLIGEABLE impact
+plot(lm.mod.ve03, which = 5)
 leverage <- hatvalues(lm.mod.ve03)
-high_leverage <- which(leverage > (2 * mean(leverage)))
-test[high_leverage, ]
+threshold <- length(lm.mod.ve03$coefficients)/length(lm.mod.ve03$fitted.values)*2
+high_leverage <- 
+  test %>% 
+  bind_cols(tibble(leverage = leverage, fits = fits, residual = round(lm.mod.ve03$residuals, 3))) %>%
+  slice(which(leverage > threshold)) %>% 
+  mutate(year = year_std+2000, pledge_USD_cp = exp(pledge_USD_cp_log), fits = exp(fits)) %>% 
+  select(pledge_USD_cp, fits, residual, leverage, year, donor_name)
+lm.mod.ve05 <-
+  lm(
+    lm.formula.ve03,
+    data = test[-which(leverage > threshold),]
+  )
 
 # Collinearity: FAIL (2 problematic) but JUSTIFIED
 vif_values_ve02 <- car::vif(lm.mod.ve02)
@@ -1766,8 +1795,6 @@ plot(lm.mod.ve03, 2)
 skewness(residuals(lm.mod.ve03))
 kurtosis(residuals(lm.mod.ve03))
 
-
-
 # Calculate robust SEs to account for auto-correlation of error terms
 lm.mod.lasso.robust <- 
   lmtest::coeftest(lm.mod.ve02, vcov = sandwich::vcovCL(lm.mod.ve02, cluster = ~ donor_name))
@@ -1775,7 +1802,7 @@ lm.mod.lasso.robust
 
 # Compare full model with model without high leverage points and robust model with minimized outliers and leverage points
 model_robust <- MASS::rlm(pledge_USD_cp_log ~ ., data = test %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
-model_clean <- lm(pledge_USD_cp_log ~ ., data = test[-high_leverage,] %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
+model_clean <- lm(pledge_USD_cp_log ~ ., data = test[-which(leverage > threshold),] %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
 
 rmse <- function(model) {
   sqrt(mean(residuals(model)^2))
@@ -1786,7 +1813,7 @@ rmse(model_clean)
 
 # Get predicted values
 test$pred_full <- predict(lm.mod.ve02)
-test_clean <- test[-high_leverage, ]  # remove high leverage points
+test_clean <- test[-which(leverage > threshold), ]  # remove high leverage points
 test_clean$pred_clean <- predict(model_clean)
 test_robust <- test
 test_robust$pred_robust <- predict(model_robust)
