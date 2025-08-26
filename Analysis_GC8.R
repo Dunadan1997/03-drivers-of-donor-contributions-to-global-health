@@ -1795,46 +1795,33 @@ plot(lm.mod.ve03, 2)
 skewness(residuals(lm.mod.ve03))
 kurtosis(residuals(lm.mod.ve03))
 
-# Calculate robust SEs to account for auto-correlation of error terms
-lm.mod.lasso.robust <- 
-  lmtest::coeftest(lm.mod.ve02, vcov = sandwich::vcovCL(lm.mod.ve02, cluster = ~ donor_name))
-lm.mod.lasso.robust
-
 # Compare full model with model without high leverage points and robust model with minimized outliers and leverage points
-model_robust <- MASS::rlm(pledge_USD_cp_log ~ ., data = test %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
-model_clean <- lm(pledge_USD_cp_log ~ ., data = test[-which(leverage > threshold),] %>% select(pledge_USD_cp_log, other_orgs_cp_log, oda_spent_log, lr_all, yes_elec, unemployment_rt_rllavg02, inflation_rt_rllavg02, Total_investment_rllavg02, gdp_cp_rllavg02, ntdbt_rllavg01, adjfsclblc_rllavg01, starts_with("donor_name"), year_std))
-
-rmse <- function(model) {
-  sqrt(mean(residuals(model)^2))
-}
-rmse(lm.mod.ve02)
-rmse(model_robust)
-rmse(model_clean)
+model_robust <- 
+  MASS::rlm(lm.formula.ve03, data = test)
+model_clean <- 
+  lm(lm.formula.ve03, data = test[-which(leverage > threshold),])
 
 # Get predicted values
-test$pred_full <- predict(lm.mod.ve02)
+test_ve03 <- test
+test_ve03$predicted <- predict(lm.mod.ve03)
 test_clean <- test[-which(leverage > threshold), ]  # remove high leverage points
-test_clean$pred_clean <- predict(model_clean)
+test_clean$predicted <- predict(model_clean)
 test_robust <- test
-test_robust$pred_robust <- predict(model_robust)
-
-# Add actual values
-test$actual <- test$pledge_USD_cp_log
-test_clean$actual <- test_clean$pledge_USD_cp_log
-test_robust$actual <- test$pledge_USD_cp_log
+test_robust$predicted <- predict(model_robust)
 
 # Combine both into a single data-frame for ggplot
-test$Model <- "Full Model"
-test_clean$Model <- "Clean Model"
+test_ve03$Model <- "Include Model"
+test_clean$Model <- "Exclude Model"
 test_robust$Model <- "Robust Model"
 
-combined <- bind_rows(
-  test %>% select(actual, predicted = pred_full, Model),
-  test_clean %>% select(actual, predicted = pred_clean, Model),
-  test_robust %>% select(actual, predicted = pred_robust, Model)
-)
+combined <- 
+  bind_rows(
+  test_ve03 %>% select(pledge_USD_cp_log, predicted, Model),
+  test_clean %>% select(pledge_USD_cp_log, predicted, Model),
+  test_robust %>% select(pledge_USD_cp_log, predicted, Model)
+  )
 
-ggplot(combined, aes(x = actual, y = predicted, color = Model)) +
+ggplot(combined, aes(x = pledge_USD_cp_log, y = predicted, color = Model)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
   geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dotted") +  # ideal line
@@ -1842,7 +1829,7 @@ ggplot(combined, aes(x = actual, y = predicted, color = Model)) +
        x = "Actual (log pledge)",
        y = "Predicted (log pledge)") +
   theme_minimal() +
-  scale_color_manual(values = c("Full Model" = blue_shades[[3]], "Clean Model" = red_shades[[3]], "Robust Model" = yellow_shades[[3]]))
+  scale_color_manual(values = c("Include Model" = blue_shades[[3]], "Exclude Model" = red_shades[[3]], "Robust Model" = yellow_shades[[3]]))
 
 
 
