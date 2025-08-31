@@ -561,29 +561,31 @@ Nonetheless, to rigorously test these relationships, we need to take the analysi
 
 Regression analysis also enables us to evaluate the reliability of our observations by testing their statistical significance and goodness of fit. This helps us determine whether the relationships we have identified are likely to hold beyond past replenishment outcomes, making them applicable to future replenishments. Finally, assuming we are able to build a robust model that captures the key predictors of public sector pledges, we may even be able to generate informed projections of future funding outcomes.
 
+This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.
+
 ## Recommendations
 Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean.
 
 ## Methodolgy
-Before modeling, I performed minor data transformations to facilitate the interpretation of model outputs and anticipate some modeling issues using academic best practices. We used the US Federal Reserve Bank's price deflator to transform nominal dollar pledges into 2022 constant prices to limit the impact of currency fluctuations on the model. 
 
-Additionally, we created a new variable calculating the average donor pledge to each development organization in our sample. This helps limit the impact of colinearity in the final model. We did the same with the different measures of party ideological orientation, where we also carried forward the last observation to deal with missing data - this is aligned with academic best practice (citation, 267), we must only make the assumption that the political ideology of certain governing parties has not evolving in the past two decades. 
+### Data Preparation and Transformations
+To facilitate interpretation and reduce potential modeling issues, I applied several transformations in line with standard econometric practice. First, all financial variables denominated in US dollars were converted into 2022 constant prices using the US Federal Reserve Bank’s price deflator. This ensures comparability across years and minimizes the impact of inflation and exchange rate fluctuations.
 
-Finally, we calculated the log of each dollar denominated variable to improve model performance. This is typically advised in econometrics studies (citation). For economic indicators, we calculated the 3-year rolling average to account for the effect of previous economic performance on donor pledges during the replenishment year, before the log transformation.
+Second, I created a composite variable reflecting the average donor pledge to all international aid organizations in the dataset. This was motivated by the high correlation across pledges, which risks introducing multicollinearity if all organizations are included separately. A composite measure of political ideology was also constructed, averaging across multiple indices. Where data were missing for specific years, values were carried forward or backward, implicitly assuming stability in party ideology across short periods.
 
-It is important to ask which modeling technique to use. For the sake of practicality, and given our small sample size (n = 141), I opted for a complete pooling approach, using multiple linear regression instead of a multi-level model, because, even though it is generally advisable to use multi-level models to fit data with nested structures, this type of model would have under-performed in our data set due to the small number of donor observations available. A multilevel model typically requires n observations per unit and n number of units to function properly (citation), but The Global Fund only completed 7 replenishments, while only a handful of countries have actually donated consistently every time, meaning that our data set didn't qualify for a multi-level model.
+Third, I log-transformed all dollar-denominated variables. Logarithmic transformations are standard in applied economics as they reduce skewness, stabilize variance, and allow coefficients to be interpreted as elasticities (Wooldridge, 2010). To capture the persistence of economic conditions, all macroeconomic variables were converted into three-year rolling averages, under the assumption that donor pledges are influenced by medium-term rather than single-year fluctuations.
 
-Thankfully, it is possible to account for the fixed-effects of the donor countries in a multiple linear regression by including the donor variable in the model, as well as the value of the replenishment year. This helps off-set the impact of country and time specific effects on other predictors, allowing us to have a cleaner view of the actual impact of predictors on the outcome of the replenishment. We will also address how to limit the impact of breaking the linear regression assumption of independent observations.
+### Modeling Strategy
+The dataset consists of 141 donor–year observations across seven replenishment cycles. Although a multilevel model would normally be recommended for data with nested structures (countries within replenishment years), simulation studies suggest that such models require at least 10–20 observations per group to perform reliably (Bryan & Jenkins, 2016). Given the limited number of replenishments and donors with complete histories, a complete pooling approach was adopted. Instead, country and year fixed effects were proxied by including donor dummies and a standardized year variable. This allows the model to account for unobserved heterogeneity across donors and time.
 
-However, the introduction of donor countries as a control variable doubles the number of predictors in our model (p = 44), as each donor country is represented as a separate variable in the model. The reliability of a model can be negatively impacted when the number of predictors is large in comparison to the number of observations. Moreover, we are including many predictors that may not have any relation with donor pledges, and including them may create unnecessary complexity in the resulting model.
+A key challenge is the ratio of predictors to observations. With donor fixed effects included, the model contains 44 predictors relative to 141 observations. Including irrelevant predictors risks inflating variance and reducing interpretability. To address this, I implemented two variable-selection approaches:
+* Forward stepwise selection: iteratively adds predictors based on improvement in model fit. Although widely used, it is known to be unstable in small samples (James et al., 2021).
+* Regularization (shrinkage): specifically ridge regression and the lasso (ibid). These methods penalize model complexity, with ridge shrinking coefficients towards zero and lasso additionally performing variable selection by setting some coefficients exactly to zero. Lasso was expected to perform well given prior evidence that pledges are strongly associated with a small subset of predictors (ODA disbursements and contributions to other organizations).
 
-For these reasons, I used two methods to manage these issues: forward stepwise selection and shrinkage. The former involves beginning with a model containing no predictors and then adding one predictor at a time, starting with the predictor that gives the greatest additional improvement to the fit. The objective being to identify the model with a subset of the predictors that performs best against the test data. The latter involves shrinking the predictors towards zero and identifying the level of shrinkage that performs best against the test data. This is a well known technique used to mitigate high variance, which can help improve the reliability of a model. There two best-known shrinkage types are the ridge regression and the lasso. We used both but have a preference for the lasso because it has the added advantage of performing variable selection by actually shrinking irrelevant predictors to exactly zero, hence facilitating the interpretation of the model results. Additionally, we have reasons to believe the lasso will perform better than the ridge regression because our descriptive analysis has shown that donor pledges seem to be strongly associated with a small subset of predictors, namely the amount spend on ODA and the financial contribution to other international development organizations like The Global Fund.
+### Model Validation
+Model performance was compared using 5-fold cross-validation. The dataset was partitioned into five subsets; in each iteration, four subsets were used for training and one for validation. Predictive accuracy was assessed using the mean squared error (MSE), with lower values indicating better fit to unseen data. Control variables (donor and year effects) were excluded from this phase, as they must be retained in the final models regardless of significance.
 
-To compare the performance of these three different modeling techniques, we used a re-sampling method known as cross-validation. This involves repeatedly drawing a sample of the data, refitting the model on each sample, and testing each model on the rest of the data. In other words, cross-validation involves randomly dividing the data into a training and validation set, allowing us to assess the performance of a model trained on the training set and tested on the validation set. The purpose of cross-validation is to simulate real life. Instead of fitting the model on the whole data from the start, we can learn a great deal about how accurate and reliable our model is likely to be by training it on a sample of our data and testing it on "new" data, that is, the data we left out. The challenge of many statistical models based on a sample of a wider population is generalizability: will your model behave the same with new data? The cross-validation approach allows us to mimic this. 
-
-We opted for a 5-fold cross-validation, randomly splitting observations into five non-overlapping validation groups. After running each model, we compared them using the Mean Squared Error (MSE), a measure of the validation set error rate, that is, how close the model predictions match the actual pledges of the new test data. The smaller the MSE the better. Before jumping into the cross-validation results, it is important to note that we excluded the control variables, namely the donor countries and the replenishment year, from this initial phase of the variable selection process. This is because all control variables need to be included in the final model, regardless of their significance, if we want to control for country and time specific noises in the data.
-
-The results show that the multiple linear regression, or OLS (for Ordinary Least Squares), performed on average better than the ridge regression and lasso when fitted against the validation set. The ridge regression performed the least well, with the lasso performing bang in the middle. At first, this shows that a full model like the ridge regression, even if it shrinks predictors, tends to underperform against models that select a subset of predictors. Additionally, it doesn't seem like the shrinkage, whether in the ridge or lasso, provides an edge over the multiple linear regression combined with stepwise selection.
+Results indicated that OLS with forward stepwise selection achieved the lowest MSE (0.67), outperforming both ridge (0.73) and lasso (0.70). This suggests that shrinkage methods did not confer substantial benefits in this relatively low-dimensional setting. Nonetheless, lasso was retained for comparison given its interpretability advantages and moderate predictive performance.[^20]
 
 ```{r table 1}
 # Create a data frame with MSE results
@@ -594,54 +596,37 @@ mse_results <- data.frame(
 )
 
 # Print the table
-kable(mse_results, caption = "Table 1: Mean Squared Error by Model")
+kable(mse_results, caption = "Mean Squared Error by Model")
 ```
 
-If we examine which variables were included in the OLS model with the lowest MSE in each fold, we observe that, 5 out of 5 times, the model contains the value spent on ODA and the financial contributions to other development organizations by donor countries. Other economic and political factors are also included, but less often. Some variables are behaving strangely as compared to our descriptive analysis, though. We did not expect the unemployment rate to be positively related to pledges, neither did we expect the % change in GDP to be positively associated with pledges, even though this was our initial hypothesis.
+[^20]: If we examine which variables selected by the OLS across the validation sets, we observe that the model always contains the value spent on ODA and the financial contributions to other development organizations by donor countries. Other economic and political factors are also selected, but less often. Some variables are behaving strangely as compared to our descriptive analysis, though. We did not expect the unemployment rate to be positively related to pledges, neither did we expect the % change in GDP to be positively associated with pledges, even though this was our initial hypothesis. Interestingly, the six variables selected in one or more of the OLS validation models correspond with the top six stronger predictors in the ridge regression and the lasso (see table 3 and 4), though the lasso tends to select more variables than the OLS. Each of these six predictors also seem to be behaving in the same direction. This leads me to think that the final model would have to include either all or at least some of these six variables: ODA disbursements, financial contributions to other development organizations, GDP per Capita, % Change in GDP, election year, and the unemployment rate.
 
-```{r table 2}
-kable(cv_mse_results_ols, caption = "Table 2: Predictors Included in Best OLS model")
-```
+### Final Model Selection
+After the initial variable selection phase, I re-estimated both OLS and Lasso models including the control variables (donor fixed effects and year). For the OLS, I retained the predictors selected in at least one validation run. The Lasso was re-estimated on all predictors, with controls forced into the model.
 
-Interestingly, the six variables included in one or more of the best OLS models correspond with the top six stronger predictors in the ridge regression and lasso (see table 3 and 4), though the lasso tends to include more variables in more of its models than the OLS. Each of these six predictors also seem to be behaving in the same direction. This leads us to think that the final model would have to include either all or at least some of these six variables: ODA disbursements, financial contributions to other development organizations, GDP per Capita, % Change in GDP, election year, and the unemployment rate.
+Adding controls refined the selection. In the Lasso, some variables that previously appeared strong, such as GDP per capita, were shrunk to zero, while others gained importance, like election year (see Table 6 in the appendix). This suggests that the inclusion of country and year effects removed noise and clarified signal.[^21] The OLS showed similar adjustments: ODA disbursements and contributions to other organizations remained the strongest predictors, while other coefficients shifted toward expected signs. Unemployment became negative, for instance (see Table 7 in the appendix).
 
-```{r table 3 and 4}
-kable(cv_results_ridge_tab, caption = "Table 3: Predictors Included in Best Ridge Regression")
+[^22]: In the appendix, Plot # shows how the variables behave depending on the amount of shrinkage applied in the Lasso, called lambda. The optimal lambda is highlighted by a black vertical line and indicates the level of shrinkage that delivers the highest predictive accuracy. All non-zero variables at that value indicate a relevant signal, as opposed to zeroed-out variables, highlighted in grey, which are considered to be noise.
 
-kable(cv_results_lasso_tab, caption = "Table 4: Predictors Included in Best Lasso")
-```
+Encouragingly, both OLS and Lasso yielded broadly consistent results, though with differences in which secondary predictors were retained. To decide between them, I compared the penalized Lasso with a Post-Lasso OLS — that is, an OLS estimated on the subset of variables selected by the Lasso. Using Leave-One-Out Cross-Validation (LOOCV), the Post-Lasso OLS consistently outperformed the penalized Lasso in predictive accuracy (see table 8).[^22] This suggests that, in this dataset, the bias introduced by shrinkage outweighed its variance-reduction benefits.
 
-The variable selection conducted by the lasso has the advantage of being less restrictive than the one done by the OLS, without necessarily sacrificing too much predictive accuracy. It is therefore worth keeping it for the moment, unlike the ridge regression which includes all variables but suffers from the lowest predictive accuracy. 
+[^22]: Note this isn't an ideal scenario because we have already trained the models on the full data, meaning this does not constitute a true test, and results should be interpreted as indicative. Furthermore, I used the LOOCV rather than the k-fold cross-validation because I want to have a broad sample of model statistics in order to assess which model performs best on average.
 
-We will now run the OLS and lasso models again with the control variables and compare their output. Variables selected at least once in the cross-validation of the OLS are included in this new regression model. The lasso is run on all predictors again, but this time the model includes control variables.
+This outcome is consistent with the structure of the data: the ratio of predictors to observations is not excessively high, and some predictors (donor and year effects) were constrained to always be included, reducing the effective dimensionality. In such cases, Lasso’s main advantage — stabilizing high-dimensional models — may not provide substantial benefits.
 
-Examining the lasso first, we see that a shorter list of variables was selected, suggesting the control factors removed some noise from the model. The coefficient path plot shows how the variables behave depending on the shrinkage value, called lambda. The optimal lambda value highlighted by a black vertical line indicates the level of shrinkage that delivers the highest predictive accuracy. All non-zero variables at that lambda value indicate a relevant signal, as opposed to zeroed-out variables, highlighted in grey, which are considered to be noise.
+Based on these results, I retained two candidate models: the forward stepwise OLS and the Post-Lasso OLS. A final comparison using LOOCV showed that the Post-Lasso OLS consistently outperformed the stepwise OLS on different key metrics (see table 8 and plot #). Therefore, the Post-Lasso OLS was selected as the final model, balancing predictive performance, parsimony, and interpretability.
 
-Similarly, the strength of the predictors was also refined, with the coeficient for contributions to other development organizations cut almost by half, from 0.66 to 0.38. Other variables were strengthened, with the coeficient of election year nearly doubling from 0.098 to 0.17. Surprisingly, the lasso shrank the GDP per capita to zero, even though it had appeared a strong predictor in all model types prior to adding the controls. Additionally, some predictors are behaving unexpectedly. For example, we would expect the adjusted fiscal balance and the primary fiscal balance to have the same directional association with pledges, but the first is negative and the second is positive. Yet, some variables who behaved strangely in the first lasso model now seem to behave as expected, such as the unemployment rate which is now negatively associated with pledges.
-
-Switching to the OLS model, we can see similar changes. The coefficient strength of the ODA disbursements and contributions to other organizations are reduced by a similar proportion, though they remain the strongest overall predictors of pledges in both the lasso and OLS. Both the % Change in GDP and the Unemployment Rate now seem to be behaving as we would expect from our descriptive analysis.
-
-```{r table 5 and 6}
-kable(lasso_coef, caption = "Table 7: ")
-kable(ols_coef, caption = "Table 6: ")
-
-coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + xlim(-10, 0)
-```
-
-What is most encouraging is that the OLS and lasso yield broadly consistent signs for the predictors. To decide which final model to select, we opted to first compare the predictive performance of the lasso against a post-lasso OLS using Leave-One-Out cross-validation (LOOCV). Note this isn't an ideal scenario because we have already trained the models on the full data, meaning this does not constitute a true test, and results should be interpreted as indicative. 
-
-The reason we want to run this comparison first is to see if the lasso's regularization actually improve predictive accuracy. What we found is the post-Lasso OLS model outperformed the penalized Lasso model itself. This suggests that the bias introduced by shrinkage outweighed its potential benefits in reducing variance. This is further corroborated by the fact that the OLS model also performed better than the lasso. Given that the ratio of predictors to observations remains small in our dataset, and because we have constrained some variables with penalty factors, meaning they are always included, this may have reduced the effective “dimensionality” of the problem, possibly making the penalty less critical. In this context, Lasso’s main advantage (shrinkage for stability in high-dimensional settings) might not provide much benefit. 
-
-We are left with two models: the forward step-wise OLS and the post-lasso OLS. When comparing the performance of the two models against key metrics using LOOCV, we find that the post-lasso OLS out performs the OLS consistently. The subset selection achieved by the lasso seems to outperform the forward step-wise selection, when control variables are included. Our final model is therefore the post-OLS lasso. 
-
-```{r table 7}
+```{r table 8}
 # Create a data frame with MSE results
 mse_results_2 <- data.frame(
   Lasso = boot_ve03 %>% pluck(5) %>% mean(na.rm = TRUE), 
   `Post-Lasso OLS` = boot_ve02 %>% pluck(14) %>% mean(na.rm = TRUE), 
   OLS = boot_ve01 %>% pluck(14) %>% mean(na.rm = TRUE)
 )
+# Compare MSE of OLS, Past-Lasso OLS, and Lasso, including control variables
+kable(mse_results_2, caption = "")
 
+# Plot key performance metrics from the OLS and the Post-Lasso OLS
 ggplot(
   data = bind_rows(boot_ve01, boot_ve02, boot_ve03) %>%
     select(model, adj.r.squared, p.value, AIC, BIC, deviance) %>%
@@ -652,7 +637,8 @@ ggplot(
   facet_wrap(~ metric, scales= "free")
 ```
 
-Now that we selected our model, the next step is to run some post-estimation tests to see if the model is aligned with assumptions underlying the OLS and to identify any other problems that may undermine the reliability of the model coefficients and predictions. The OLS has six classical assumptions:
+### Post Estimation
+Now that we selected our model, the next step is to run some post-estimation tests to see if the model is aligned with the underlying OLS assumptions and to identify any other problems that may undermine the reliability of the model coefficients and predictions. The OLS has six classical assumptions:
 1. Linearity of the response-predictor relationships
 2. Random sampling
 3. No perfect collinearity
@@ -662,7 +648,7 @@ Now that we selected our model, the next step is to run some post-estimation tes
 
 We can plot the residuals of the model against the fitted values to estimate the linearity of the response-predictor relationship. If the plot does not indicate any pattern, then the linearity assumption is respected. In our case, the red line in plot # is flat, indicating that the relationship between the pledges and the predictors is linear. Plot # shows this relationship is broadly linear for all predictors. The OLS is therefore an appropriate technique to model the relationship between pledges and the economic and political factors we selected.
 
-Our dataset includes data on the # donor countries, including all the largest donors. It is therefore representative of The Global Fund's donor base. However, there a related issue which is the correlation of error terms. Because we have a combination of panel and time series data, our observations may be somewhat correlated. We can examine this using a visual and statistical test. The visual seems to reveal no obvious relationship between the error terms. When running the Durbin-Watson test, we find that we cannot reject the null hypothesis that the true autocorrelation is 0 (p-value = 0.09275) at a 5% significance level. Despite successfully passing this test, we may still want to use robust standard errors as we will see later.
+Our dataset includes economic and political data for most donor countries, including the largest donors. It is therefore representative of The Global Fund's donor base. However, there is a related issue which is the correlation of error terms. Because we have a combination of panel and time series data, our observations may be somewhat correlated. We can examine this using a visual and statistical test. The visual seems to reveal no obvious relationship between the error terms. When running the Durbin-Watson test, we find that we cannot reject the null hypothesis that the true autocorrelation is 0 (p-value = 0.09275) at a 5% significance level. Despite successfully passing this test, we may still want to use robust standard errors as we will see later.
 
 ```{r plot 14 and 15}
 # assumption 1
@@ -728,7 +714,22 @@ high_leverage
 tibble(model = c(list(lm.mod.ve03), list(lm.mod.ve05))) %>% mutate(version = c("ve03", "ve05"), glance = map(model, glance)) %>% unnest(glance) %>% select(version, adj.r.squared, AIC, BIC, sigma)
 ```
 
-This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.
+## Appendix
+```{r table 2}
+# Compare model outputs from k-fold CV
+kable(cv_mse_results_ols, caption = "Table 2: Predictors Included in Best OLS model")
+kable(cv_results_ridge_tab, caption = "Table 3: Predictors Included in Best Ridge Regression")
+kable(cv_results_lasso_tab, caption = "Table 4: Predictors Included in Best Lasso")
+
+# Compare model outputs from LOOCV CV 
+kable(lasso_coef, caption = "Table 7: ")
+kable(ols_coef, caption = "Table 6: ")
+
+# Plot coefficient plot from Lasso, including control variables
+coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + xlim(-10, 0)
+```
+
+
 
 ## Sources
 Apeagyei (Micah), A., Dieleman, J. and Leach-Kemon, K. (2024) Financing Global Health 2023: The Future of Health Financing in the Post-Pandemic Era. Institute for Health Metrics and Evaluation, 14 May. Available at: https://www.healthdata.org/research-analysis/library/financing-global-health-2023-future-health-financing-post-pandemic-era (Accessed: 1 April 2025).
