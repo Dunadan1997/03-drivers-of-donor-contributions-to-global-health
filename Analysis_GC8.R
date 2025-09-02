@@ -14,6 +14,10 @@ library(boot)
 library(leaps)
 library(glmnet)
 library(Matrix)
+library(modelr)
+library(sandwich) # post-estimation
+library(lmtest) # post-estimation
+library(moments) # post-estimation
 
 # Load Functions
 source("Functions_GC8.R")
@@ -1596,23 +1600,26 @@ lm.mod.ve02 <-
   )
 summary(lm.mod.ve02)
 
-
-library(modelr)
-# Examine residuals from both models
-test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1)) %>% gather_predictions(lm.mod.ve01, lm.mod.ve02) %>% select(pred, pledge_USD_cp_log, model, donor_name, year_std) %>% mutate(resid = pledge_USD_cp_log - pred) %>% filter(abs(resid) > 1)
-test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1)) %>% add_predictions(lm.mod.ve02) %>% add_residuals(lm.mod.ve02) %>% ggplot(aes(year_std)) + geom_point(aes(y = pledge_USD_cp_log)) + geom_point(aes(y = pred, size = abs(resid)), color = "red", alpha = 0.5)  
-test %>% select(pledge_USD_cp_log, donor_name, year_std, lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1)) %>% mutate(donor_level = ifelse(donor_name %in% c("United States", "France", "United Kingdom", "Germany", "Japan"), "top5", "other")) %>% add_predictions(lm.mod.ve02) %>% add_residuals(lm.mod.ve02) %>% ggplot(aes(year_std, resid)) + geom_line(aes(color = donor_name), alpha = 1/3) + facet_wrap(~ donor_level) + geom_hline(yintercept = 0, color = "white", linewidth = 2) + scale_color_manual(values = c("United States" = red_shades[[2]])) + ylim(-2.5,2.5)
-
-df_models <- test[colnames(test) %in% c("pledge_USD_cp_log", "donor_name", "year_std", lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1))]
-boot_size <- 1000
-list01 <- rep(list(1:n), n)
-list02 <- rep(list(1:n), n)
-list03 <- rep(list(1:n), n)
-list04 <- rep(list(1:n), n)
-list05 <- rep(list(1:n), n)
-vec01 <- vector("double", length = n)
-vec02 <- vector("double", length = n)
-vec03 <- vector("double", length = n)
+df_models <- 
+  test[colnames(test) %in% c("pledge_USD_cp_log", "donor_name", "year_std", lasso_coef %>% pluck(1), cv_mse_results_ols %>% pluck(1))]
+boot_size <- 
+  1000
+list01 <- 
+  rep(list(1:n), n)
+list02 <- 
+  rep(list(1:n), n)
+list03 <- 
+  rep(list(1:n), n)
+list04 <- 
+  rep(list(1:n), n)
+list05 <- 
+  rep(list(1:n), n)
+vec01 <- 
+  vector("double", length = n)
+vec02 <- 
+  vector("double", length = n)
+vec03 <- 
+  vector("double", length = n)
 
 set.seed(456)
 for (i in seq_along(list01)) {
@@ -1676,55 +1683,21 @@ boot_ve01 <-
   as_tibble_col(list03, column_name = "model") %>% 
   mutate(fit = map(model, broom::glance), mse = vec01) %>% 
   unnest(fit) %>% 
-  mutate(model = "ve01")
-boot_ve01 %>% pluck(3) %>% mean()
-boot_ve01 %>% pluck(14) %>% mean(na.rm = TRUE)
+  mutate(model = "OLS")
 
 boot_ve02 <- 
   as_tibble_col(list02, column_name = "model") %>% 
   mutate(fit = map(model, broom::glance), mse = vec02) %>% 
   unnest(fit) %>% 
-  mutate(model = "ve02")
-boot_ve02 %>% pluck(3) %>% mean()
-boot_ve02 %>% pluck(14) %>% mean(na.rm = TRUE)
+  mutate(model = "Post-Lasso OLS")
 
 boot_ve03 <- 
   as_tibble_col(list05, column_name = "model") %>% 
   mutate(fit = map(model, broom::glance), mse = vec03) %>% 
   unnest(fit) %>% 
-  mutate(model = "ve03")
-boot_ve03 %>% pluck(5) %>% mean(na.rm = TRUE)
-
-ggplot(
-  data = bind_rows(boot_ve01, boot_ve02, boot_ve03) %>%
-    select(model, adj.r.squared, p.value, AIC, BIC, deviance, mse) %>%
-    pivot_longer(cols = c("adj.r.squared", "p.value", "AIC", "BIC", "deviance"), names_to = "metric", values_to = "values"), 
-  aes(y = values, group = model)
-  ) + 
-  geom_boxplot() +
-  facet_wrap(~ metric, scales= "free")
-
-# Post-estimation
-library(sandwich)
-library(lmtest)
+  mutate(model = "Lasso")
 
 # Post-Estimation ---------------------------------------------------------
-
-# Non-linearity of the response-predictor relationships: SUCCESS
-plot(lm.mod.ve02, which = 1)
-car::crPlots(lm.mod.ve02, layout = c(4, 3))
-
-# Correlation of error terms: PARTIAL SUCCESS, but MITIGATED with Robust SEs
-dev.off()
-resids <- residuals(lm.mod.ve02)
-plot(residuals(lm.mod.ve02), type = "l",
-     main = paste0("Residuals over Observations\n(", "corr ", round(cor(1:length(resids), resids), 3),")"),
-     xlab = "Observation index",
-     ylab = "Residuals")
-abline(h = 0, col = "red", lty = 2)
-acf(residuals(lm.mod.ve02), main = "ACF of Residuals")
-cor(1:length(resids), resids)
-lmtest::dwtest(lm.mod.ve02)
 
 # Zero Conditional Mean
 test$year_c <- 
@@ -1744,19 +1717,27 @@ lm.mod.ve03 <-
 summary(lm.mod.ve03)
 lmtest::resettest(lm.mod.ve03)
 
+# Correlation of error terms: PARTIAL SUCCESS, but MITIGATED with Robust SEs
+resids <- 
+  residuals(lm.mod.ve03)
+dwtest <- 
+  lmtest::dwtest(lm.mod.ve03)
+
 # Non-constant variance of error terms: SUCCESS
-plot(lm.mod.ve03, which = 3)
-lmtest::bptest(lm.mod.ve03)
+bptest <-
+  lmtest::bptest(lm.mod.ve03)
+
+# Collinearity: FAIL (2 problematic) but JUSTIFIED
+vif_values_ve03 <- 
+  car::vif(lm.mod.ve03)
+
+# Normality: (robust SEs if necessary)
+skewness(residuals(lm.mod.ve03))
+kurtosis(residuals(lm.mod.ve03))
 
 # Outliers: FAIL (3 outliers) but NEGLIGEABLE impact
 stud_res <- rstudent(lm.mod.ve03)
 fits <- fitted(lm.mod.ve03)
-plot(fits, stud_res,
-     xlab = "Fitted Values",
-     ylab = "Studentized Residuals",
-     main = "Studentized Residuals vs Fitted")
-abline(h = 0, col = "red", lty = 2)
-abline(h = c(-3, 3), col = "blue", lty = 2)
 outliers <- 
   test %>% 
   bind_cols(tibble(fits = fits)) %>%
@@ -1768,6 +1749,11 @@ lm.mod.ve04 <-
     lm.formula.ve03,
     data = test[-which(abs(stud_res)>3),]
   )
+mod_comparison1 <- 
+  tibble(model = c(list(lm.mod.ve03), list(lm.mod.ve04))) %>% 
+  mutate(version = c("Model_With_Outliers", "Model_WithOUT_Outliers"), glance = map(model, glance)) %>% 
+  unnest(glance) %>% 
+  select(version, adj.r.squared, AIC, BIC, sigma)
 
 # High-leverage points: FAIL (9 high leverage points) but NEGLIGEABLE impact
 plot(lm.mod.ve03, which = 5)
@@ -1784,16 +1770,11 @@ lm.mod.ve05 <-
     lm.formula.ve03,
     data = test[-which(leverage > threshold),]
   )
-
-# Collinearity: FAIL (2 problematic) but JUSTIFIED
-vif_values_ve02 <- car::vif(lm.mod.ve02)
-vif_values_ve03 <- car::vif(lm.mod.ve03)
-
-# Normality: (robust SEs if necessary)
-library(moments)
-plot(lm.mod.ve03, 2)
-skewness(residuals(lm.mod.ve03))
-kurtosis(residuals(lm.mod.ve03))
+mod_comparison2 <-
+  tibble(model = c(list(lm.mod.ve03), list(lm.mod.ve05))) %>% 
+  mutate(version = c("Model_With_Leverage", "Model_WithOUT_Leverage"), glance = map(model, glance)) %>% 
+  unnest(glance) %>% 
+  select(version, adj.r.squared, AIC, BIC, sigma)
 
 # Compare full model with model without high leverage points and robust model with minimized outliers and leverage points
 model_robust <- 
@@ -1802,17 +1783,26 @@ model_clean <-
   lm(lm.formula.ve03, data = test[-which(leverage > threshold),])
 
 # Get predicted values
-test_ve03 <- test
-test_ve03$predicted <- predict(lm.mod.ve03)
-test_clean <- test[-which(leverage > threshold), ]  # remove high leverage points
-test_clean$predicted <- predict(model_clean)
-test_robust <- test
-test_robust$predicted <- predict(model_robust)
+test_ve03 <- 
+  test
+test_ve03$predicted <- 
+  predict(lm.mod.ve03)
+test_clean <- 
+  test[-which(leverage > threshold), ]  # remove high leverage points
+test_clean$predicted <- 
+  predict(model_clean)
+test_robust <- 
+  test
+test_robust$predicted <- 
+  predict(model_robust)
 
 # Combine both into a single data-frame for ggplot
-test_ve03$Model <- "Include Model"
-test_clean$Model <- "Exclude Model"
-test_robust$Model <- "Robust Model"
+test_ve03$Model <- 
+  "Include Model"
+test_clean$Model <- 
+  "Exclude Model"
+test_robust$Model <- 
+  "Robust Model"
 
 combined <- 
   bind_rows(
@@ -1820,18 +1810,6 @@ combined <-
   test_clean %>% select(pledge_USD_cp_log, predicted, Model),
   test_robust %>% select(pledge_USD_cp_log, predicted, Model)
   )
-
-ggplot(combined, aes(x = pledge_USD_cp_log, y = predicted, color = Model)) +
-  geom_point(alpha = 0.6) +
-  geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
-  geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dotted") +  # ideal line
-  labs(title = "Predicted vs Actual Values",
-       x = "Actual (log pledge)",
-       y = "Predicted (log pledge)") +
-  theme_minimal() +
-  scale_color_manual(values = c("Include Model" = blue_shades[[3]], "Exclude Model" = red_shades[[3]], "Robust Model" = yellow_shades[[3]]))
-
-
 
 
 
