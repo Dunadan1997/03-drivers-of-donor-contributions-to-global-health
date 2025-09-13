@@ -16,8 +16,11 @@ library(glmnet)
 library(Matrix)
 library(modelr)
 library(sandwich) # post-estimation
+library(clubSandwich) # post-estimation
 library(lmtest) # post-estimation
 library(moments) # post-estimation
+library(modelsummary) # reporting results
+library(stargazer) # reporting results
 
 # Load Functions
 source("Functions_GC8.R")
@@ -1484,7 +1487,8 @@ cv_mse_results_ols <-
   filter(!is.na(Coef)) %>% 
   group_by(Variable) %>% 
   summarise(Included = n(), Mean_Coef = mean(Coef)) %>% 
-  arrange(desc(Included), desc(abs(Mean_Coef)))
+  arrange(desc(Included), desc(abs(Mean_Coef))) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
 
 # Ridge: Model selection and Assessment (select best tuning parameter first on training data)
 
@@ -1502,7 +1506,8 @@ cv_results_ridge_tab <-
   filter(!is.na(Coef)) %>% 
   group_by(Variable) %>% 
   summarise(Mean_Coef = mean(Coef)) %>% 
-  arrange(desc(abs(Mean_Coef)))
+  arrange(desc(abs(Mean_Coef))) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
 
 # Compute best lambda value
 cv.ridge <- 
@@ -1535,7 +1540,8 @@ cv_results_lasso_tab <-
   filter(Coef != 0) %>% 
   group_by(Variable) %>% 
   summarise(Included = n(), Mean_Coef = mean(Coef)) %>% 
-  arrange(desc(Included), desc(abs(Mean_Coef)))
+  arrange(desc(Included), desc(abs(Mean_Coef))) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
 
 # Plot coefficient path on full date, WITHOUT control variables
 bestlam_lasso_nocontrols <-
@@ -1561,7 +1567,8 @@ names(lasso_coef) <-
 lasso_coef <-
   enframe(lasso_coef, name = "Variable", value = "Coef") %>% 
   filter(Coef != 0 & !Variable %in% c("year_std", "(Intercept)") & !str_starts(Variable, "donor_name")) %>% 
-  arrange(desc(abs(Coef)))
+  arrange(desc(abs(Coef))) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 3)))
 
 # Plot coefficient path, WITH control variables
 coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + xlim(-10, 0)
@@ -1584,7 +1591,8 @@ summary(lm.mod.ve01)
 ols_coef <-
   lm.mod.ve01$coefficients %>% 
   enframe(name = "Variables", value = "Coef") %>% 
-  filter(!startsWith(Variables, "donor_name") & !Variables %in% c("year_std", "(Intercept)"))
+  filter(!startsWith(Variables, "donor_name") & !Variables %in% c("year_std", "(Intercept)")) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
 
 lm.formula.ve02 <-
   as.formula(
@@ -1715,11 +1723,25 @@ lm.mod.ve03 <-
     data = test
   )
 summary(lm.mod.ve03)
-lmtest::resettest(lm.mod.ve03)
+resettest <- 
+  lmtest::resettest(lm.mod.ve03)
+
+# Plot Linearity
+fitted_ve03 <- 
+  fitted(lm.mod.ve03)
+resids_ve03  <- 
+  residuals(lm.mod.ve03)
+plot(fitted_ve03, resids_ve03, xlab = "Fitted values", ylab = "Residuals")
+linearity_ve03 <- 
+  recordPlot()
+
 
 # Correlation of error terms: PARTIAL SUCCESS, but MITIGATED with Robust SEs
-resids <- 
-  residuals(lm.mod.ve03)
+plot(resids_ve03, type = "l",
+       xlab = "Observation index",
+       ylab = "Residuals")
+autocor_ve03 <- 
+  recordPlot()
 dwtest <- 
   lmtest::dwtest(lm.mod.ve03)
 
@@ -1732,8 +1754,10 @@ vif_values_ve03 <-
   car::vif(lm.mod.ve03)
 
 # Normality: (robust SEs if necessary)
-skewness(residuals(lm.mod.ve03))
-kurtosis(residuals(lm.mod.ve03))
+skewness_ve03 <- 
+  skewness(residuals(lm.mod.ve03))
+kurtosis_ve03 <- 
+  kurtosis(residuals(lm.mod.ve03))
 
 # Outliers: FAIL (3 outliers) but NEGLIGEABLE impact
 stud_res <- rstudent(lm.mod.ve03)
@@ -1743,7 +1767,8 @@ outliers <-
   bind_cols(tibble(fits = fits)) %>%
   slice(which(abs(stud_res)>3)) %>% 
   mutate(year = year_std+2000, pledge_USD_cp = exp(pledge_USD_cp_log), fits = exp(fits)) %>% 
-  select(pledge_USD_cp, fits, year, donor_name)
+  select(pledge_USD_cp, fits, year, donor_name) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
 lm.mod.ve04 <-
   lm(
     lm.formula.ve03,
@@ -1753,7 +1778,8 @@ mod_comparison1 <-
   tibble(model = c(list(lm.mod.ve03), list(lm.mod.ve04))) %>% 
   mutate(version = c("Model_With_Outliers", "Model_WithOUT_Outliers"), glance = map(model, glance)) %>% 
   unnest(glance) %>% 
-  select(version, adj.r.squared, AIC, BIC, sigma)
+  select(version, adj.r.squared, AIC, BIC, sigma) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
 
 # High-leverage points: FAIL (9 high leverage points) but NEGLIGEABLE impact
 plot(lm.mod.ve03, which = 5)
@@ -1764,7 +1790,8 @@ high_leverage <-
   bind_cols(tibble(leverage = leverage, fits = fits, residual = round(lm.mod.ve03$residuals, 3))) %>%
   slice(which(leverage > threshold)) %>% 
   mutate(year = year_std+2000, pledge_USD_cp = exp(pledge_USD_cp_log), fits = exp(fits)) %>% 
-  select(pledge_USD_cp, fits, residual, leverage, year, donor_name)
+  select(pledge_USD_cp, fits, residual, leverage, year, donor_name) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
 lm.mod.ve05 <-
   lm(
     lm.formula.ve03,
@@ -1774,7 +1801,8 @@ mod_comparison2 <-
   tibble(model = c(list(lm.mod.ve03), list(lm.mod.ve05))) %>% 
   mutate(version = c("Model_With_Leverage", "Model_WithOUT_Leverage"), glance = map(model, glance)) %>% 
   unnest(glance) %>% 
-  select(version, adj.r.squared, AIC, BIC, sigma)
+  select(version, adj.r.squared, AIC, BIC, sigma) %>% 
+  mutate(across(where(is.numeric), \(x) round(x, 2)))
 
 # Compare full model with model without high leverage points and robust model with minimized outliers and leverage points
 model_robust <- 
@@ -1811,6 +1839,21 @@ combined <-
   test_robust %>% select(pledge_USD_cp_log, predicted, Model)
   )
 
+# Calculate robust standard errors, using CR2 because of small cluster number (<30)
+postLassoOLS_robustSEs <-
+  coeftest(
+  lm.mod.ve03, 
+  vcov = vcovCR(
+    lm.mod.ve03, 
+    cluster = test$donor_name, # using cluster-robust by country but not by year because of small number of yearly observations per country (<7)
+    type = "CR2"
+    )
+  )
+
+modelsummary(list("Post-LASSO OLS" = postLassoOLS_robustSEs),
+             statistic = c("std.error", "p.value"),
+             stars = TRUE,
+             title = "Table 1. Post-LASSO OLS with Cluster-Robust SEs (Clustered by Country)")
 
 
 

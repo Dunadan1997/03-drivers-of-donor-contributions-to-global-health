@@ -563,6 +563,18 @@ Regression analysis also enables us to evaluate the reliability of our observati
 
 Idea: compare predictions against 2025 announced pledges.
 
+```{r model summary}
+stargazer(lm.mod.ve03,
+          se = list(sqrt(diag(vcovCR(lm.mod.ve03,
+                                     cluster = test$donor_name,
+                                     type = "CR2")))),
+          type = "text",
+          title = "Table 1. Post-LASSO OLS with Cluster-Robust SEs (Clustered by Country)",
+          dep.var.labels = "Pledges (log, constant 2022 USD)",
+          notes = "Cluster-robust standard errors (CR2) by donor country.")
+```
+
+
 This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.
 
 ## Recommendations
@@ -578,9 +590,9 @@ Second, I created a composite variable reflecting the average donor pledge to al
 Third, I log-transformed all dollar-denominated variables. Logarithmic transformations are standard in applied economics as they reduce skewness, stabilize variance, and allow coefficients to be interpreted as elasticities (Wooldridge, 2010). To capture the persistence of economic conditions, all macroeconomic variables were converted into three-year rolling averages, under the assumption that donor pledges are influenced by medium-term rather than single-year fluctuations.
 
 ### Modeling Strategy
-The dataset consists of 141 donor–year observations across seven replenishment cycles. Although a multilevel model would normally be recommended for data with nested structures (countries within replenishment years), simulation studies suggest that such models require at least 10–20 observations per group to perform reliably (Bryan & Jenkins, 2016). Given the limited number of replenishments and donors with complete histories, a complete pooling approach was adopted. Instead, country and year fixed effects were proxied by including donor dummies and a standardized year variable. This allows the model to account for unobserved heterogeneity across donors and time.
+The dataset consists of `r nrow(test)` donor–year observations across seven replenishment cycles. Although a multilevel model would normally be recommended for data with nested structures (countries within replenishment years), simulation studies suggest that such models require at least 10–20 observations per group to perform reliably (Bryan & Jenkins, 2016). Given the limited number of replenishments and donors with complete histories, a complete pooling approach was adopted. Instead, country and year fixed effects were proxied by including donor dummies and a standardized year variable. This allows the model to account for unobserved heterogeneity across donors and time.
 
-A key challenge is the ratio of predictors to observations. With donor fixed effects included, the model contains 44 predictors relative to 141 observations. Including irrelevant predictors risks inflating variance and reducing interpretability. To address this, I implemented two variable-selection approaches:
+A key challenge is the ratio of predictors to observations. With donor fixed effects included, the model could contain `r ncol(x_controls)` predictors relative to `r nrow(test)` observations. Including irrelevant predictors risks inflating variance and reducing interpretability. To address this, I implemented two variable-selection approaches:
 
 1. Forward stepwise selection: iteratively adds predictors based on improvement in model fit. Although widely used, it is known to be unstable in small samples (James et al., 2021).
 2. Regularization (shrinkage): specifically ridge regression and the lasso (ibid). These methods penalize model complexity, with ridge shrinking coefficients towards zero and lasso additionally performing variable selection by setting some coefficients exactly to zero. Lasso was expected to perform well given prior evidence that pledges are strongly associated with a small subset of predictors (ODA disbursements and contributions to other organizations).
@@ -588,7 +600,7 @@ A key challenge is the ratio of predictors to observations. With donor fixed eff
 ### Model Validation
 Model performance was compared using 5-fold cross-validation. The dataset was partitioned into five subsets; in each iteration, four subsets were used for training and one for validation. Predictive accuracy was assessed using the mean squared error (MSE), with lower values indicating better fit to unseen data. Control variables (donor and year effects) were excluded from this phase, as they must be retained in the final models regardless of significance.
 
-Results indicated that OLS with forward stepwise selection achieved the lowest MSE (0.67), outperforming both ridge (0.73) and lasso (0.70). This suggests that shrinkage methods did not confer substantial benefits in this relatively low-dimensional setting. Nonetheless, lasso was retained for comparison given its interpretability advantages and moderate predictive performance.[^4]
+Results indicated that OLS with forward stepwise selection achieved the lowest MSE (`r round(min(mean.cv.errors), 2)`), outperforming both ridge (`r round(mean(cv_mse_ridge), 2)`) and lasso (`r round(mean(cv_mse_lasso), 2)`). This suggests that shrinkage methods did not confer substantial benefits in this relatively low-dimensional setting. Nonetheless, lasso was retained for comparison given its interpretability advantages and moderate predictive performance.[^4]
 
 ```{r table 1}
 # Create a data frame with MSE results
@@ -644,7 +656,8 @@ ggplot(
   ) + 
   geom_boxplot() +
   facet_wrap(~ metric, scales= "free") +
-  labs(x = NULL, y = NULL)
+  labs(x = NULL, y = NULL, 
+       title = "Figure 14: Post-Lasso OLS consistently outperformed the stepwise OLS")
 ```
 
 ### Post-Estimation Diagnostics
@@ -660,55 +673,51 @@ The six key assumptions of OLS are:
 6. Normality of the error distribution.
 
 ### Linearity
-Visual inspection of residuals plotted against fitted values revealed no systematic patterns, with the smoothing line lying flat. This suggests that the assumption of linearity is broadly satisfied. Residuals plotted against individual predictors showed similar results, with the exception of a slight curvature for the year variable. Introducing a centered polynomial term addressed this without materially changing model fit. The Ramsey RESET test also provided no evidence of omitted nonlinearities (p = 0.56).
+Visual inspection of residuals plotted against fitted values revealed no systematic patterns, with the smoothing line lying flat. This suggests that the assumption of linearity is broadly satisfied. Residuals plotted against individual predictors showed similar results, with the exception of a slight curvature for the year variable. Introducing a centered polynomial term addressed this without materially changing model fit. The Ramsey RESET test also provided no evidence of omitted nonlinearities (RESET = `r round(resettest$statistic, 2)`, p = `r round(resettest$p.value, 2)`).
 
 ```{r plot 15}
 # Plot Residuals vs Fitter
-plot(lm.mod.ve02, which = 1)
+linearity_ve03
+title(main = "Figure 15: No systematic patterns in residuals")
+abline(h = 0, lty = 2, col = "grey")
+lines(lowess(fitted_ve03, resids_ve03), lwd = 0.75, col = "red")
 ```
 
 ### Random Sampling and Serial Correlation
-The dataset covers most Global Fund donors over multiple replenishment years, making it representative of the donor base. However, given the longitudinal structure, correlation of error terms across time is a concern. A Durbin–Watson test indicated no significant autocorrelation (DW = 2.12, p = 0.09), and residual plots also suggested no obvious patterns. While this assumption appears satisfied, robust (heteroskedasticity-consistent) standard errors are reported as a precaution.
+The dataset covers most Global Fund donors over multiple replenishment years, making it representative of the donor base. However, given the longitudinal structure, correlation of error terms across time is a concern. A Durbin–Watson test indicated no significant evidence of autocorrelation (DW = `r round(dwtest$statistic, 2)`, p = `r round(dwtest$p.value, 2)`). A residuals-versus-observation plot (Figure 16) also showed no systematic patterns, aside from a slight curvature. While the assumption of independent errors therefore appears satisfied, heteroskedasticity-consistent robust standard errors are reported as a precaution.
 
 ```{r plot 16}
 # Plot residuals over observations
-plot(residuals(lm.mod.ve03), type = "l",
-     main = paste0("Plot #: Residuals over Observations\n(", "corr ", round(cor(1:length(resids), resids), 3),")"),
-     xlab = "Observation index",
-     ylab = "Residuals")
-abline(h = 0, col = "red", lty = 2)
-
-# test for serial correlation
-dwtest
+autocor_ve03
+abline(h = 0, col = "grey", lty = 2)
+lines(lowess(resids_ve03), lwd = 0.75, col = "red")
+title(main = paste0("Figure 16: No systematic patterns aside from a slight curvature\n(", "corr ", round(cor(1:length(resids_ve03), resids_ve03), 3),")"),)
 ```
 
 ### Collinearity
-No predictor was a perfect linear combination of others. However, donor ODA disbursements and pledges to other organizations were highly correlated (cor = 0.95). VIF analysis confirmed moderately high collinearity (values > 5). Although dropping one of these predictors would mechanically improve collinearity, doing so would remove substantively important information, as both capture distinct aspects of donor behavior. These variables were therefore retained, with the caveat that their coefficients should be interpreted cautiously.
+No predictor was a perfect linear combination of others. However, donor ODA disbursements and pledges to other organizations were highly correlated (cor = `r round(cor(test$oda_spent_log, test$other_orgs_cp_log), 2)`). VIF analysis confirmed moderately high collinearity (values > 5). Although dropping one of these predictors would mechanically improve collinearity, doing so would remove substantively important information, as both capture distinct aspects of donor behavior. These variables were therefore retained, with the caveat that their coefficients should be interpreted cautiously.
 
 ```{r table 3}
-kable(vif_values_ve03, caption = "Analysis of Variance Inflation Factors (VIF)")
+kable(enframe(round(vif_values_ve03[,c(3)], 2), name = "Variables", "VIF"), caption = "Variance Inflation Factors (VIF) show moderately high collinearity")
 ```
 
 ### Zero Conditional Mean
 This assumption requires that error terms are uncorrelated with the predictors, which in practice means key determinants of pledges must be included. The broad range of political and economic covariates incorporated, along with donor and year controls, mitigates the risk of major omitted variables. Residual diagnostics showed no evidence of hidden patterns (see Plot # in the appendix).
 
 ### Homoskedasticity
-Plotting standardized residuals against fitted values revealed no funnel-shaped dispersion, and the Breusch–Pagan test confirmed constant variance of errors (p = 0.44). The homoskedasticity assumption therefore appears satisfied.
+Plotting standardized residuals against fitted values revealed no funnel-shaped dispersion, and the Breusch–Pagan test confirmed constant variance of errors (bp = ``r round(bptest$statistic, 2)`, p = `r round(bptest$p.value, 2)`). The homoskedasticity assumption therefore appears satisfied.
 
 ```{r plot 17}
 # Plot standardized residuals against fitted values
-plot(lm.mod.ve03, which = 3)
-
-# Test for Heteroskedasticity
-bptest
+plot(lm.mod.ve03, which = 3, main = "Figure 17: No funnel-shaped dispersion")
 ```
 
 ### Normality of Errors
-Q-Q plots indicated residuals were broadly normally distributed, with minor deviations in the lower tail but no systematic S-shape. Skewness (-0.41) indicated approximate symmetry, while kurtosis (4.13) suggested slightly heavier tails than a normal distribution, consistent with a few extreme residuals. Given the moderate sample size (n = 141), these departures do not threaten inference.
+Q-Q plots indicated residuals were broadly normally distributed, with minor deviations in the lower tail but no systematic S-shape. Skewness (`r round(skewness_ve03,2)`) indicated approximate symmetry, while kurtosis (`r round(kurtosis_ve03, 2)`) suggested slightly heavier tails than a normal distribution, consistent with a few extreme residuals. Given the moderate sample size (n = `r nrow(test)`), these departures do not threaten inference.
 
 ```{r plot 18, warning = FALSE}
 # Plot standardized residuals against theoretical quantiles
-plot(lm.mod.ve03, 2)
+plot(lm.mod.ve03, 2, main = "Figure 18: Residuals are broadly normally distributed\nwith minor deviations\n")
 ```
 
 ### Outliers and Leverage Points
@@ -720,22 +729,22 @@ Overall, diagnostic checks suggest that the Post-Lasso OLS approximately satisfi
 
 ```{r table 4 to 7 and plot 19}
 # Identify outliers
-kable(outliers, caption = "Table 4: Outliers (Standardized Residuals > 3)")
+kable(outliers, caption = "Outliers (standardized residuals > 3)")
 # Compare model goodness-of-fit with and without outliers
-kable(mod_comparison1, caption = "Table 5: Model goodness-of-fit with and without outliers")
+kable(mod_comparison1, caption = "Model goodness-of-fit with and without outliers")
 
 # Identify high leverage points
-kable(high_leverage, caption = "Table 6: High Leverage Point")
+kable(high_leverage, caption = "High Leverage Point (twice the average leverage)")
 # Compare model with and without high leverage points
-kable(mod_comparison2, caption = "Table 7: Model goodness-of-fit with and without high leverage points")
+kable(mod_comparison2, caption = "Model goodness-of-fit with and without high leverage points")
 
 # Plot standardized residuals and leverage
-plot(lm.mod.ve03, which = 5)
+plot(lm.mod.ve03, which = 5, main = "Figure 19: High leverage points have small residuals\nand limited influence\n")
 ```
 
 ## Appendix
 ### Model Selection and Performance
-```{r table 8 to 12 and plot 20}
+```{r table 8 to 12}
 # Compare model outputs from k-fold CV
 kable(cv_mse_results_ols, caption = "Table 8: Predictors Included in Best OLS model")
 kable(cv_results_ridge_tab, caption = "Table 9: Predictors Included in Best Ridge Regression")
@@ -744,22 +753,25 @@ kable(cv_results_lasso_tab, caption = "Table 10: Predictors Included in Best Las
 # Compare model outputs from LOOCV CV 
 kable(lasso_coef, caption = "Table 11: ")
 kable(ols_coef, caption = "Table 12: ")
-
+```
+```{r plot 20, fig.width=8, fig.height=11}
 # Plot coefficient plot from Lasso, including control variables
-coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + xlim(-10, 0)
+coef_path_plot(1, bestlam_lasso, 0, control_vars = TRUE) + labs(title = "Figure 20: Coefficient Path Plot of the Lasso") + xlim(-7.5, -3) + ylim(-0.5, 1) + theme(legend.position = "inside", legend.position.inside = c(0.8,0.6), legend.title = element_blank())
 ```
 
 ### Post-Estimation
-```{r plot 21 and 22}
+```{r plot 21, fig.width=8, fig.height=11}
 # Plot Residuals vs Fitted against all Predictors
-car::crPlots(lm.mod.ve02, layout = c(4, 3))
+car::crPlots(lm.mod.ve03, layout = c(4, 4), main = "Figure 21: Linear pattern of residuals broadly respected across predictors")
+```
 
+```{r plot 22}
 # Plot three models (Post-Lasso OLS with and without high leverage points, as well as robust regression)
 ggplot(combined, aes(x = pledge_USD_cp_log, y = predicted, color = Model)) +
   geom_point(alpha = 0.6) +
   geom_smooth(method = "lm", se = FALSE, linetype = "dashed") +
   geom_abline(slope = 1, intercept = 0, color = "black", linetype = "dotted") +  # ideal line
-  labs(title = "Predicted vs Actual Values",
+  labs(title = "Figure 22: Models with or without leverage points, and with\nrobust regression, yield similar results",
        x = "Actual (log pledge)",
        y = "Predicted (log pledge)") +
   theme_minimal() +
