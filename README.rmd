@@ -563,15 +563,28 @@ Regression analysis also enables us to evaluate the reliability of our observati
 
 Idea: compare predictions against 2025 announced pledges.
 
-```{r model summary}
+```{r model summary, results = "asis"}
 stargazer(lm.mod.ve03,
           se = list(sqrt(diag(vcovCR(lm.mod.ve03,
                                      cluster = test$donor_name,
                                      type = "CR2")))),
-          type = "text",
+          type = "latex",
           title = "Table 1. Post-LASSO OLS with Cluster-Robust SEs (Clustered by Country)",
           dep.var.labels = "Pledges (log, constant 2022 USD)",
-          notes = "Cluster-robust standard errors (CR2) by donor country.")
+          notes = "Cluster-robust standard errors (CR2) by donor country.", 
+          omit = c(1:26, 37), 
+          covariate.labels = c(
+            "ODA Disbursements (log, constant 2022 USD)",
+            "Pledges to Other Organizations (log, constant 2022 USD)",
+            "Election Year", "Adjusted Fiscal Balance (3-yr rolling avg)", 
+            "Primary Fiscal Balance (3-yr rolling avg)", 
+            "GDP (% change, 3-yr rolling avg)",
+            "Inflation Rate (3-yr rolling avg)", 
+            "Unemployment Rate (3-yr rolling avg)", 
+            "Left-Right Ideology (Scale of 1 to 10)", 
+            "Exports (Volume, 3-yr rolling avg)"
+            )
+          )
 ```
 
 
@@ -778,6 +791,17 @@ ggplot(combined, aes(x = pledge_USD_cp_log, y = predicted, color = Model)) +
   scale_color_manual(values = c("Include Model" = blue_shades[[3]], "Exclude Model" = red_shades[[3]], "Robust Model" = yellow_shades[[3]]))
 ```
 
+### Full Model
+```{r Full-Model Summary, results = "as-is"}
+stargazer(lm.mod.ve03,
+          se = list(sqrt(diag(vcovCR(lm.mod.ve03,
+                                     cluster = test$donor_name,
+                                     type = "CR2")))),
+          type = "latex",
+          title = "Table 1. Post-LASSO OLS with Cluster-Robust SEs (Clustered by Country)",
+          dep.var.labels = "Pledges (log, constant 2022 USD)",
+          notes = "Cluster-robust standard errors (CR2) by donor country.")
+```
 
 ## Sources
 Apeagyei (Micah), A., Dieleman, J. and Leach-Kemon, K. (2024) Financing Global Health 2023: The Future of Health Financing in the Post-Pandemic Era. Institute for Health Metrics and Evaluation, 14 May. Available at: https://www.healthdata.org/research-analysis/library/financing-global-health-2023-future-health-financing-post-pandemic-era (Accessed: 1 April 2025).
