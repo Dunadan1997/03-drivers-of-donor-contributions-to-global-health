@@ -561,37 +561,49 @@ Nonetheless, to rigorously test these relationships, we need to take the analysi
 
 Regression analysis also enables us to evaluate the reliability of our observations by testing their statistical significance and goodness of fit. This helps us determine whether the relationships we have identified are likely to hold beyond past replenishment outcomes, making them applicable to future replenishments. Finally, assuming we are able to build a robust model that captures the key predictors of public sector pledges, we may even be able to generate informed projections of future funding outcomes.
 
-Idea: compare predictions against 2025 announced pledges.
+### Model Results
+The results from my robust regression model shows that only a subset of the original predictors are actually useful in explaining donor country pledges to The Global Fund. Using advanced statistical techniques, which you can examine in the methodology section, I discovered that pledges to The Global Fund from 2001 to 2021 are particularly sensible to 10 predictors. 
+
+Unsurprisingly, the two factors most strongly associated with donor pledges are ODA disbursements and contributions to other international aid organizations. Holding other factors constant, the model suggests that a 1% increase in ODA disbursements is associated with roughly a 0.75% increase in pledges. This effect is statistically significant at a 1% level, meaning that it is very unlikely to be due to chance and will probably persist in future replenishments.
+
+Contributions to other international aid organizations, such as GAVI, CEPI, and GEF, also show a positive association, with the model suggesting that a 1% increase in these contributions could raise pledges by about 0.29%. However, this estimate is not statistically significant, so we cannot rule out the possibility that the true effect is zero.
+
+Importantly, while the direction of these associations is consistent with expectations, the precision of the estimates varies considerably. This means that while ODA disbursements are a robust predictor of pledges, the effect of contributions to other aid organizations should be interpreted with caution.
+
+The next two factors with the largest impact on TGF pledges are the adjusted and primary fiscal balance of donor countries. Interestingly, these predictors are inversely related with public sector contributions to the Fund. Holding other factors constant, the model indicates that one unit of change in the adjusted fiscal balance is associated with an approximate 0.15% decrease in pledges, while one unit of change in the primary fiscal balance is associated with a roughly 0.12% increase in pledges. Both estimates are statistically significant at a 10% level, suggesting that they are unlikely to be due to chance and may persist in future replenishments.
+
+These results show that the fiscal policy of a government is likely to influence its pledge. A government running a tighter fiscal stance, when adjusted to cyclical changes in the economy, is expected to pledge less than a government running a looser structural fiscal policy. In other words, the willingness of a government to spend more rather than less will spillover into higher pledges. Additionally, the model suggests that when donor countries run a primary surplus they are likely to raise their contribution to The Global Fund, meaning that a fiscal surplus tends to create political and fiscal room to pledge aid. 
 
 ```{r model summary, results = "asis"}
-stargazer(lm.mod.ve03,
-          se = list(sqrt(diag(vcovCR(lm.mod.ve03,
-                                     cluster = test$donor_name,
-                                     type = "CR2")))),
+stargazer(postLassoOLS_robustSEs,
           type = "latex",
           title = "Table 1. Post-LASSO OLS with Cluster-Robust SEs (Clustered by Country)",
           dep.var.labels = "Pledges (log, constant 2022 USD)",
           notes = "Cluster-robust standard errors (CR2) by donor country.", 
-          omit = c(1:26, 37), 
-          covariate.labels = c(
-            "ODA Disbursements (log, constant 2022 USD)",
-            "Pledges to Other Organizations (log, constant 2022 USD)",
-            "Election Year", "Adjusted Fiscal Balance (3-yr rolling avg)", 
-            "Primary Fiscal Balance (3-yr rolling avg)", 
-            "GDP (% change, 3-yr rolling avg)",
-            "Inflation Rate (3-yr rolling avg)", 
-            "Unemployment Rate (3-yr rolling avg)", 
-            "Left-Right Ideology (Scale of 1 to 10)", 
-            "Exports (Volume, 3-yr rolling avg)"
-            )
-          )
+          keep = terms,           
+          order = order_terms,
+          covariate.labels = covariate_names
+)
 ```
 
+```{r plot 23}
+# Plot model estimates
+ggplot(model_tab, aes(x = estimate, y = fct_rev(term_renamed))) + 
+  geom_point() + 
+  geom_errorbarh(aes(xmin = conf.low, xmax = conf.high), height = 0.2) + 
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  labs(x = NULL, y = NULL) +
+  plot_frame
 
-This is a micro analysis, so focus on The Global Fund (over ODA and Global Health as such). Basically, don't mix macro into a micro analysis. Make sure you stay grounded in your data.
+```
+
+### Scenarios for the Eigth Replenishment
+
 
 ## Recommendations
-Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean.
+Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean. One more reason to have a rational donor engagement policy that maximizes the effort per donor pledge, i.e., we need to run our replenishment in the manner that maximizes donor pledges the most. 
+
+Avoid election years in key donor countries. Target countries that run primary surpluses or governments that have a loose fiscal policy. Monitor ODA disbursements and contributions to other international aid organizations to forecast realistic funding levels and adjust spending and grant-making accordingly.
 
 ## Methodolgy
 

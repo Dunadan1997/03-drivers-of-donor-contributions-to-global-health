@@ -1850,6 +1850,57 @@ postLassoOLS_robustSEs <-
     )
   )
 
+# Tidy model results
+model_tab <- 
+  tidy(postLassoOLS_robustSEs) %>% 
+  mutate(
+    conf.low = estimate - std.error, 
+    conf.high = estimate + std.error,
+    term_renamed = factor(term,
+      levels = c("oda_spent_log",
+                 "other_orgs_cp_log",                      
+                 "adjfsclblc_rllavg01", 
+                 "prmryfsclblc_rllavg01",
+                 "gdp_cp_rllavg02", 
+                 "inflation_rt_rllavg02", 
+                 "unemployment_rt_rllavg02", 
+                 "exports_vl_rllavg02",
+                 "yes_elec", 
+                 "lr_all"                  
+                 ),
+      labels = c("ODA Disbursements (log, constant 2022 USD)", 
+                 "Pledges to Other Organizations (log, constant 2022 USD)",
+                 "Adjusted Fiscal Balance (3-yr rolling avg)",
+                 "Primary Fiscal Balance (3-yr rolling avg)" , 
+                 "GDP (percentage change, 3-yr rolling avg)",
+                 "Inflation Rate (3-yr rolling avg)",
+                 "Unemployment Rate (3-yr rolling avg)",
+                 "Exports (Volume, 3-yr rolling avg)",
+                 "Election Year",
+                 "Left-Right Ideology (Scale of 1 to 10)"
+                 )
+      )
+    ) %>% 
+  filter(
+    !str_starts(term, "donor"), 
+    !str_detect(term, "year"), 
+    term!= "(Intercept)"
+    )
+  
+terms <- 
+  model_tab %>% 
+  pluck("term")
+  
+covariate_names <- 
+  model_tab %>% 
+  arrange(term_renamed) %>%
+  pluck("term_renamed", as.character)
+
+order_terms <-
+  model_tab %>% 
+  arrange(term_renamed) %>% 
+  pull("term")
+
 modelsummary(list("Post-LASSO OLS" = postLassoOLS_robustSEs),
              statistic = c("std.error", "p.value"),
              stars = TRUE,
