@@ -564,7 +564,7 @@ Regression analysis also enables us to evaluate the reliability of our observati
 ### Model Results
 The results from my robust regression model shows that only a subset of the original predictors are actually useful in explaining donor country pledges to The Global Fund. Using advanced statistical techniques, which you can examine in the methodology section, I discovered that pledges to The Global Fund from 2001 to 2021 are particularly sensible to 10 predictors. 
 
-Unsurprisingly, the two factors most strongly associated with donor pledges are ODA disbursements and contributions to other international aid organizations. Holding other factors constant, the model suggests that a 1% increase in ODA disbursements is associated with roughly a 0.75% increase in pledges. This effect is statistically significant at a 1% level, providing convincing evidence that this estimate is unlikely to be due to chance and will probably persist in future replenishments.
+Unsurprisingly, the two factors most strongly associated with donor pledges are ODA disbursements and contributions to other international aid organizations. Holding other factors constant, the model suggests that a 1% increase in ODA disbursements is associated with roughly a 0.75% increase in pledges. This effect is statistically significant at a 1% level, providing convincing evidence that this estimate is not random and may persist in future replenishments. Additionally, the fact that the coefficient is less than one implies that pledges respond less than proportionally to changes in ODA disbursements, suggesting that Global Fund funding is partly insulated from fluctuations in ODA.
 
 Contributions to other international aid organizations, such as GAVI, CEPI, and GEF, also show a positive association, with the model suggesting that a 1% increase in these contributions could raise pledges by about 0.29%. However, this estimate is not statistically significant, so we cannot rule out the possibility that the true effect is zero.
 
@@ -577,6 +577,18 @@ These findings point to the importance of both fiscal philosophy and fiscal capa
 This tension helps explain the behavior of some donors. For example, Germany combined a structurally tight fiscal philosophy with fiscal surpluses in the 2010s, yet still made significant pledges to the Global Fund. In such cases, fiscal capacity offsets fiscal conservatism, enabling contributions despite a restrictive stance.
 
 In sum, the results highlight that aid commitments are shaped not only by the immediate fiscal space available to governments but also by their broader fiscal philosophy, suggesting that donor generosity is both an economic and political choice.
+
+The model identifies four other economic predictors with a limited impact on financial contributions: GDP (% change), the inflation and unemployment rate, and volumn of exports as a share of GDP. These variables broadly behave as expected, though with nuances.
+
+Holding other factors constant, a one percentage point increase in GDP growth is associated with a 0.07% decline in pledges. The estimate is statistically insignificant, providing no strong evidence of a systematic relationship. A likely explanation is donor composition: countries with rapid GDP growth tend to be low- or middle-income rather than the high-income countries that account for the bulk of Global Fund contributions. This composition may explain the negative sign, while the absence of significance suggests GDP growth is not a meaningful predictor of pledges.
+
+Both inflation and unemployment are negatively related to pledges. A one percentage point rise in inflation is linked to a 0.014% decline in pledges, while a one percentage point increase in unemployment is associated with a 0.07% decline. Only the unemployment effect is significant at the 10% level, providing suggestive evidence that labor market conditions matter for donor commitments, whereas inflation does not appear to play a systematic role. 
+
+The export share of GDP is weakly positively related to pledges, with a one percentage point increase associated with a 0.016% rise in contributions. The coefficient is statistically insignificant, however, and the confidence interval includes both positive and negative values. This indicates that trade orientation is not a reliable driver of Global Fund pledges.
+
+Finally, the model considers two political factors: election years and government ideology (1 = far left, 10 = far right). Holding other factors constant, replenishments coinciding with election years are associated with a 0.07% decline in pledges, while a one-point move to the right on the ideological scale is associated with a 0.05% increase. Substantively, even the maximum difference between far-left and far-right governments amounts to only 0.5% of pledges. Both effects are small and statistically insignificant, suggesting that neither election timing nor government ideology systematically influence donor contributions.
+
+Overall, these results reinforce the primary role played by overall ODA disbursements influencing country donor pledges to The Global Fund. They also indicate that fiscal capacity and fiscal philosophy, rather than macroeconomic fluctuations or political cycles and ideologies, are key drivers of Global Fund pledges.
 
 ```{r model summary, results = "asis"}
 stargazer(postLassoOLS_robustSEs,
@@ -607,7 +619,9 @@ ggplot(model_tab, aes(x = estimate, y = fct_rev(term_renamed))) +
 ## Recommendations
 Development assistance for health peaked in 2021 at US$84 billion with the COVID-19 pandemic. Return to pre-pandemic levels of funding is already underway, levels of financing could fall farther below if donors reallocate development assistance away from health due to other priorities like war or climate change. At best, health funding is regressing to the mean. One more reason to have a rational donor engagement policy that maximizes the effort per donor pledge, i.e., we need to run our replenishment in the manner that maximizes donor pledges the most. 
 
-Avoid election years in key donor countries. Target countries that run primary surpluses or governments that have a loose fiscal policy. Monitor ODA disbursements and contributions to other international aid organizations to forecast realistic funding levels and adjust spending and grant-making accordingly.
+Target countries that run primary surpluses or governments that have a loose fiscal policy. Monitor ODA disbursements and contributions to other international aid organizations to forecast realistic funding levels and adjust spending and grant-making accordingly. Check unemployment rates in rich countries: a country with more working people means higher tax revenues and therefore more fiscal room to finance international aid.
+
+Don't assume donors of The Global Fund wear political stripes. Avoiding election years in key donor countries may be convenient but it is probably not essential for securing higher pledges.  
 
 Wider implications: if we are heading for a world of tighter fiscal policy with governments that don't run surpluses, i.e., the case of France, Great Britain, the USA... then this bodes really badly for The Global Fund. 
 
