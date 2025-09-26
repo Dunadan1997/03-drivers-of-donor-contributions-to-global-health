@@ -1708,7 +1708,7 @@ boot_ve03 <-
 # Post-Estimation ---------------------------------------------------------
 
 # Zero Conditional Mean
-test$year_c <- 
+test$yexar_c <- 
   scale(test$year_std, center = TRUE, scale = FALSE)
 lm.formula.ve03 <-
   as.formula(
@@ -1907,4 +1907,28 @@ modelsummary(list("Post-LASSO OLS" = postLassoOLS_robustSEs),
              title = "Table 1. Post-LASSO OLS with Cluster-Robust SEs (Clustered by Country)")
 
 
+
+
+# Scenario Analysis -------------------------------------------------------
+
+scenarios <-
+  tibble(
+    donor_name = levels(test$donor_name),
+    year_c = 25 - mean(test$year_std)
+    ) %>% 
+  left_join(
+    list_data %>% 
+      filter(source == "IMF2") %>% 
+      pluck(2,1) %>% filter(year == 2025) %>% 
+      select(donor_name, gdp_cp_rllavg02, unemployment_rt_rllavg02, exports_vl_rllavg02, inflation_rt_rllavg02), 
+    by = "donor_name"
+    ) %>% 
+  left_join(
+    list_data %>% 
+      filter(source == "IMF1") %>% 
+      pluck(2,1) %>% 
+      filter(year == 2025) %>% 
+      select(donor_name, prmryfsclblc_rllavg01, adjfsclblc_rllavg01), 
+    by = "donor_name")
+  
 
