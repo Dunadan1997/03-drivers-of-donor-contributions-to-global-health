@@ -1708,7 +1708,7 @@ boot_ve03 <-
 # Post-Estimation ---------------------------------------------------------
 
 # Zero Conditional Mean
-test$yexar_c <- 
+test$year_c <- 
   scale(test$year_std, center = TRUE, scale = FALSE)
 lm.formula.ve03 <-
   as.formula(
@@ -1906,15 +1906,39 @@ modelsummary(list("Post-LASSO OLS" = postLassoOLS_robustSEs),
              stars = TRUE,
              title = "Table 1. Post-LASSO OLS with Cluster-Robust SEs (Clustered by Country)")
 
-
-
-
 # Scenario Analysis -------------------------------------------------------
 
 scenarios <-
   tibble(
     donor_name = levels(test$donor_name),
-    year_c = 25 - mean(test$year_std)
+    year_c = 25 - mean(test$year_std),
+    yes_elec = c(
+        0, # Malta
+        1, # Australia
+        0, # Austria
+        1, # Belgium
+        1, # Canada
+        0, # Cyprus
+        0, # Denmark
+        0, # Finland
+        0, # France
+        1, # Germany
+        0, # Iceland
+        0, # Ireland
+        0, # Italy
+        0, # Japan
+        0, # Luxembourg
+        1, # Netherlands (snap election due later in 2025)
+        0, # New Zealand
+        0, # Norway
+        0, # Poland
+        1, # Portugal
+        0, # Spain
+        0, # Sweden
+        0, # Switzerland
+        0, # United Kingdom
+        0  # United States
+      )
     ) %>% 
   left_join(
     list_data %>% 
@@ -1930,5 +1954,80 @@ scenarios <-
       filter(year == 2025) %>% 
       select(donor_name, prmryfsclblc_rllavg01, adjfsclblc_rllavg01), 
     by = "donor_name")
+
+elections_2025 <- tibble(
+  donor_name = c(
+    "Malta", "Australia", "Austria", "Belgium", "Canada", "Cyprus",
+    "Denmark", "Finland", "France", "Germany", "Iceland", "Ireland",
+    "Italy", "Japan", "Luxembourg", "Netherlands", "New Zealand", "Norway",
+    "Poland", "Portugal", "Spain", "Sweden", "Switzerland", "United Kingdom",
+    "United States"
+  ),
+  gov_party = c(
+    "Labour Party",                          # Malta
+    "Australian Labor Party",                # Australia
+    "Austrian People's Party",               # Austria
+    "Alexander De Croo coalition (Open VLD, MR, others)", # Belgium
+    "Liberal Party of Canada",               # Canada
+    "Democratic Rally",                      # Cyprus
+    "Social Democrats",                      # Denmark
+    "National Coalition Party",              # Finland
+    "Renaissance",                           # France
+    "CDU/CSU",                               # Germany
+    "Independence Party",                    # Iceland
+    "Fianna Fáil–Fine Gael coalition",       # Ireland
+    "Brothers of Italy",                     # Italy
+    "Liberal Democratic Party",              # Japan
+    "Christian Social People's Party",       # Luxembourg
+    "Party for Freedom-led coalition",       # Netherlands
+    "National Party",                        # New Zealand
+    "Labour Party",                          # Norway
+    "Civic Coalition-led government",        # Poland
+    "Democratic Alliance",                   # Portugal
+    "Spanish Socialist Workers' Party",      # Spain
+    "Moderate Party",                        # Sweden
+    "Federal Council (multi-party)",         # Switzerland
+    "Labour Party",                          # United Kingdom
+    "Republican Party"                       # United States
+  ),
+  gov_abbrev = c(
+    "PL",   # Malta
+    "ALP",  # Australia
+    "OVP",  # Austria
+    "VU; NVA", # Belgium (lead party of coalition)
+    "LIB",  # Canada
+    "DISY", # Cyprus
+    "SD",    # Denmark
+    "Kok",  # Finland (Kokoomus)
+    "REM; RE",   # France
+    "CDU/CSU", # Germany, alliance
+    "IP/SDA",   # Iceland, alliance of the Independent party and the Social Democratic Alliance
+    "FF/FG",   # Ireland, alliance
+    "FdI",     # Italy
+    "LDP",     # Japan
+    "CSV",     # Luxembourg
+    "PVV",     # Netherlands (lead party of coalition)
+    "NAT",     # New Zealand
+    "A",      # Norway (Arbeiderpartiet)
+    "PO",      # Poland (Civic Coalition led by the Civic Platform, aka PO)
+    "CDS; PP/PPD; PSD",      # Portugal, alliance
+    "PSOE",    # Spain
+    "M",       # Sweden
+    "Cons.",   # Switzerland (multi-party consensus)
+    "Lab",     # United Kingdom
+    "GOP"      # United States
+  )
+)
+
+ches24 <- 
+  bind_rows(
+    list_data %>% filter(source == "CHES") %>% pluck(2,1) %>% filter(yr_rating_reported == 2024), 
+    list_data %>% filter(source == "CHES") %>% pluck(2,1) %>% filter(yr_rating_reported == 2024) %>% filter(country_name %in% c("Germany", "Ireland", "Portugal", "Iceland")) %>% filter(party_name_short %in% c("CDU", "CSU", "CDS; PP", "PPD; PSD", "FF", "FG", "IP", "SDA")) %>% filter(country_name != "Portugal" | party_name_short != "CDU") %>% group_by(country_name, yr_rating_reported) %>% summarise(party_name_short = str_c(party_name_short, collapse = "/"), lrecon_ches = mean(lrecon_ches), party_id_ches = as.numeric(str_c(party_id_ches, collapse = "")))
+    )  
+
+elections_2025 %>% mutate(party_name_short = str_to_lower(gov_abbrev)) %>% select(donor_name, party_name_short) %>% left_join(ches24 %>% mutate(party_name_short = str_to_lower(party_name_short), donor_name = country_name) %>% select(donor_name, party_name_short, lrgen_ches, lrecon_ches), by = c("party_name_short", "donor_name")) %>% filter(is.na(lrecon_ches)) %>% View()
+
+
+
   
 
