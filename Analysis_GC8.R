@@ -1955,12 +1955,33 @@ scenarios <-
       select(donor_name, prmryfsclblc_rllavg01, adjfsclblc_rllavg01), 
     by = "donor_name")
 
-elections_2025 <- tibble(
+govts_2025 <- 
+  tibble(
   donor_name = c(
-    "Malta", "Australia", "Austria", "Belgium", "Canada", "Cyprus",
-    "Denmark", "Finland", "France", "Germany", "Iceland", "Ireland",
-    "Italy", "Japan", "Luxembourg", "Netherlands", "New Zealand", "Norway",
-    "Poland", "Portugal", "Spain", "Sweden", "Switzerland", "United Kingdom",
+    "Malta", 
+    "Australia", 
+    "Austria", 
+    "Belgium", 
+    "Canada", 
+    "Cyprus",
+    "Denmark", 
+    "Finland", 
+    "France", 
+    "Germany", 
+    "Iceland", 
+    "Ireland",
+    "Italy",
+    "Japan", 
+    "Luxembourg", 
+    "Netherlands", 
+    "New Zealand", 
+    "Norway",
+    "Poland", 
+    "Portugal", 
+    "Spain", 
+    "Sweden", 
+    "Switzerland",
+    "United Kingdom",
     "United States"
   ),
   gov_party = c(
@@ -2016,18 +2037,137 @@ elections_2025 <- tibble(
     "Cons.",   # Switzerland (multi-party consensus)
     "Lab",     # United Kingdom
     "GOP"      # United States
+  ),
+  party_id_mp = c(
+    54320,
+    63320,
+    42520,
+    21916,
+    62420,
+    55711,
+    13320,
+    14620,
+    31425,
+    41521,
+    1532815620, # alliance
+    5362053520, # alliance
+    32630,
+    71620,
+    23520,
+    22722,
+    64620,
+    12320,
+    92040,
+    3531335520, # alliance
+    33320,
+    11620,
+    NA, # Switzerland is a special case (there's no leading party) 
+    51320,
+    61620
+    ), 
+  party_id_ches = c(
+    3701,
+    NA,
+    1302,
+    110,
+    NA,
+    4001,
+    201,
+    1402,
+    626,
+    301308,
+    45014505,
+    701702,
+    844,
+    NA,
+    3801,
+    1017,
+    NA,
+    3501,
+    2603,
+    12021206,
+    501,
+    1605,
+    NA,
+    1102,
+    NA
+    )
   )
-)
 
-ches24 <- 
+
+# Extract the 2024 CHES ratings for economic ideology of political parties
+scenarios <- 
   bind_rows(
-    list_data %>% filter(source == "CHES") %>% pluck(2,1) %>% filter(yr_rating_reported == 2024), 
-    list_data %>% filter(source == "CHES") %>% pluck(2,1) %>% filter(yr_rating_reported == 2024) %>% filter(country_name %in% c("Germany", "Ireland", "Portugal", "Iceland")) %>% filter(party_name_short %in% c("CDU", "CSU", "CDS; PP", "PPD; PSD", "FF", "FG", "IP", "SDA")) %>% filter(country_name != "Portugal" | party_name_short != "CDU") %>% group_by(country_name, yr_rating_reported) %>% summarise(party_name_short = str_c(party_name_short, collapse = "/"), lrecon_ches = mean(lrecon_ches), party_id_ches = as.numeric(str_c(party_id_ches, collapse = "")))
-    )  
+    list_data %>% 
+      filter(source == "CHES") %>% 
+      pluck(2,1) %>% 
+      filter(yr_rating_reported == 2024), 
+    list_data %>% 
+      filter(source == "CHES") %>% 
+      pluck(2,1) %>% 
+      filter(yr_rating_reported == 2024) %>% 
+      filter(country_name %in% c("Germany", "Ireland", "Portugal", "Iceland")) %>% 
+      filter(party_name_short %in% c("CDU", "CSU", "CDS; PP", "PPD; PSD", "FF", "FG", "IP", "SDA")) %>% 
+      filter(country_name != "Portugal" | party_name_short != "CDU") %>% 
+      group_by(country_name, yr_rating_reported) %>% 
+      summarise(
+        party_name_short = str_c(party_name_short, collapse = "/"), 
+        lrecon_ches = mean(lrecon_ches), 
+        party_id_ches = as.numeric(str_c(party_id_ches, collapse = "")),
+        .groups = "drop")
+    ) %>% 
+  mutate(
+    party_name_short = str_to_lower(party_name_short), 
+    donor_name = country_name
+    ) %>% 
+  select(donor_name, party_name_short, lrecon_ches) %>% 
+  right_join(
+    govts_2025 %>% 
+      mutate(party_name_short = str_to_lower(gov_abbrev)) %>% 
+      select(donor_name, party_name_short, contains("_id_")), 
+    by = c("party_name_short", "donor_name")) %>% 
+  left_join(
+    list_data %>% 
+      filter(source == "MP") %>% 
+      pluck(2,1) %>% 
+      group_by(country_name) %>% 
+      filter(elecdate == max(elecdate)) %>% 
+      ungroup() %>% 
+      select(party_id_mp, lrgen_mp), by = "party_id_mp"
+    ) %>% 
+  left_join(
+    bind_rows(
+      list_data %>% 
+        filter(source == "CHES") %>% 
+        pluck(2, 1) %>% 
+        filter(!is.na(lrgen_ches)) %>% 
+        group_by(country_name) %>% 
+        filter(yr_rating_reported == max(yr_rating_reported)) %>%
+        ungroup(),
+      list_data %>% 
+        filter(source == "CHES") %>% 
+        pluck(2, 1) %>% 
+        filter(country_name %in% c("Germany", "Ireland", "Portugal")) %>% 
+        filter(party_name_short %in% c("CDU", "CSU", "CDS/PP", "PSD", "FF", "FG")) %>% 
+        filter(!is.na(lrgen_ches)) %>% 
+        filter(yr_rating_reported == max(yr_rating_reported)) %>% 
+        filter(country_name != "Portugal" | party_name_short != "CDU") %>% 
+        group_by(country_name, yr_rating_reported) %>% 
+        summarise(
+          party_name_short = str_c(party_name_short, collapse = "/"),
+          party_id_ches    = as.numeric(str_c(party_id_ches, collapse = "")), 
+          lrgen_ches       = mean(lrgen_ches),
+          .groups          = "drop"
+          )
+      ) %>% 
+      select(party_id_ches, lrgen_ches),
+    by = "party_id_ches"
+    ) %>%
+  left_join(
+    scenarios, 
+    by = "donor_name") %>% 
+  select(donor_name, year_c, everything(), -party_name_short, -contains("_id_"))
 
-elections_2025 %>% mutate(party_name_short = str_to_lower(gov_abbrev)) %>% select(donor_name, party_name_short) %>% left_join(ches24 %>% mutate(party_name_short = str_to_lower(party_name_short), donor_name = country_name) %>% select(donor_name, party_name_short, lrgen_ches, lrecon_ches), by = c("party_name_short", "donor_name")) %>% filter(is.na(lrecon_ches)) %>% View()
-
-
-
+# still need to do political ideology for Switzerland
   
 
