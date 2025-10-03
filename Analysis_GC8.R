@@ -2088,7 +2088,7 @@ govts_2025 <-
     12021206,
     501,
     1605,
-    NA,
+    3601360236033604, # Switzerland is a special case (there's no leading party)
     1102,
     NA
     )
@@ -2128,7 +2128,7 @@ scenarios <-
     by = c("party_name_short", "donor_name")) %>% 
   left_join(
     list_data %>% 
-      filter(source == "MP") %>% 
+      filter(source == "MP") %>% # Add swiss calculation here
       pluck(2,1) %>% 
       group_by(country_name) %>% 
       filter(elecdate == max(elecdate)) %>% 
@@ -2169,5 +2169,6 @@ scenarios <-
   select(donor_name, year_c, everything(), -party_name_short, -contains("_id_"))
 
 # still need to do political ideology for Switzerland
-  
+
+list_data %>% filter(source == "MP") %>%  pluck(2,1) %>% group_by(country_name) %>% filter(elecdate == max(elecdate)) %>% filter(country_name == "Switzerland") %>% filter(party_short_name %in% c("SVP/UDC", "SPS/PSS", "FDP/PLR", "CVP/PDC"))
 
