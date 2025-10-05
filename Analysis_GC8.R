@@ -2061,7 +2061,7 @@ govts_2025 <-
     3531335520, # alliance
     33320,
     11620,
-    NA, # Switzerland is a special case (there's no leading party) 
+    43320434204352043810, # All parties in the Swiss Federal Council 
     51320,
     61620
     ), 
@@ -2088,7 +2088,7 @@ govts_2025 <-
     12021206,
     501,
     1605,
-    3601360236033604, # Switzerland is a special case (there's no leading party)
+    3601360236033604, # All parties in the Swiss Federal Council
     1102,
     NA
     )
@@ -2127,13 +2127,29 @@ scenarios <-
       select(donor_name, party_name_short, contains("_id_")), 
     by = c("party_name_short", "donor_name")) %>% 
   left_join(
-    list_data %>% 
-      filter(source == "MP") %>% # Add swiss calculation here
-      pluck(2,1) %>% 
+    bind_rows(
+      list_data %>%
+        filter(source == "MP") %>% 
+        pluck(2,1) %>% 
+        group_by(country_name) %>%
+        filter(elecdate == max(elecdate)) %>% 
+        filter(country_name == "Switzerland") %>% 
+        filter(party_short_name %in% c("SVP/UDC", "SPS/PSS", "FDP/PLR", "CVP/PDC")) %>% 
+        group_by(country_name, elecdate) %>% 
+        summarise(
+          party_id_mp = as.numeric(str_c(party_id_mp, collapse = "")), 
+          party_short_name = str_c(party_short_name, collapse = ";"), 
+          lrgen_mp = mean(lrgen_mp),
+          .groups = "drop"),
+      list_data %>% 
+        filter(source == "MP") %>% 
+        pluck(2,1)
+      ) %>% 
       group_by(country_name) %>% 
       filter(elecdate == max(elecdate)) %>% 
       ungroup() %>% 
-      select(party_id_mp, lrgen_mp), by = "party_id_mp"
+      select(party_id_mp, lrgen_mp), 
+    by = "party_id_mp"
     ) %>% 
   left_join(
     bind_rows(
@@ -2155,9 +2171,9 @@ scenarios <-
         group_by(country_name, yr_rating_reported) %>% 
         summarise(
           party_name_short = str_c(party_name_short, collapse = "/"),
-          party_id_ches    = as.numeric(str_c(party_id_ches, collapse = "")), 
-          lrgen_ches       = mean(lrgen_ches),
-          .groups          = "drop"
+          party_id_ches = as.numeric(str_c(party_id_ches, collapse = "")), 
+          lrgen_ches = mean(lrgen_ches),
+          .groups = "drop"
           )
       ) %>% 
       select(party_id_ches, lrgen_ches),
@@ -2168,7 +2184,13 @@ scenarios <-
     by = "donor_name") %>% 
   select(donor_name, year_c, everything(), -party_name_short, -contains("_id_"))
 
-# still need to do political ideology for Switzerland
-
-list_data %>% filter(source == "MP") %>%  pluck(2,1) %>% group_by(country_name) %>% filter(elecdate == max(elecdate)) %>% filter(country_name == "Switzerland") %>% filter(party_short_name %in% c("SVP/UDC", "SPS/PSS", "FDP/PLR", "CVP/PDC"))
+p_2022 <- 100   
+p_2023 <- 103.60121   
+conv_factor <- p_2022 / p_2023
+ 
+scenarios <-
+  bind_rows(
+    scenarios,
+    list_data %>% filter(source == "OECD4") %>% pluck(2,1) %>% select(donor_name = Donor, year = TIME_PERIOD, oda_spent = OBS_VALUE) %>% mutate(oda_spent = oda_spent*conv_factor) %>% filter(donor_name %in% pull(scenarios, var = donor_name)))
+# check list
 
