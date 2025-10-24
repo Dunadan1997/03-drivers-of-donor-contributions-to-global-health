@@ -2187,10 +2187,154 @@ scenarios <-
 p_2022 <- 100   
 p_2023 <- 103.60121   
 conv_factor <- p_2022 / p_2023
- 
-scenarios <-
-  bind_rows(
-    scenarios,
-    list_data %>% filter(source == "OECD4") %>% pluck(2,1) %>% select(donor_name = Donor, year = TIME_PERIOD, oda_spent = OBS_VALUE) %>% mutate(oda_spent = oda_spent*conv_factor) %>% filter(donor_name %in% pull(scenarios, var = donor_name)))
-# check list
 
+oecd_ODA_prctchg_2024 <-
+  tibble(
+    donor_name = c(
+      "Austria", "Belgium", "Czechia", "Denmark", "Estonia", "Finland", "France", "Germany",
+      "Greece", "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg", "Netherlands",
+      "Poland", "Portugal", "Slovak Republic", "Slovenia", "Spain", "Sweden", "Australia", "Canada",
+      "Iceland", "Japan", "Korea", "New Zealand", "Norway", "Switzerland", "United Kingdom",
+      "United States", "Azerbaijan", "Bulgaria", "Croatia", "Israel", "Kuwait", "Liechtenstein",
+      "Malta", "Monaco", "Qatar", "Romania", "Turkey", "United Arab Emirates"
+      ),
+    prct_change_24 = c(
+      -9.5, 12.2, -29.1, 2.2, -26.3, -12.9, -0.02, -17.2, 3.3, -31.5,
+      -14.0, 6.7, -22.1, -12.9, -0.3, -2.8, -26.8, 21.3, 3.9, -1.8,
+      9.0, -13.4, 0.3, -8.1, -3.6, -10.3, 24.8, 0.5, -3.8, -14.9,
+      -10.8, -4.4, -40.9, -21.3, 3.6, -33.4, 1130.9, 16.2, -9.2, 8.7,
+      -7.6, 14.2, -5.4, -20.6
+      ),
+    comment_24 = c(
+      "Due to decreases in both its bilateral aid, driven by lower in-donor refugee costs, as well as a fall in its multilateral aid.",
+      "Due to an increase in contributions to international organisations.",
+      "Due to lower levels of costs reported to host refugees.",
+      "Mainly due to an increase in contributions to international organisations.",
+      "Due to lower levels of in-donor costs for refugees.",
+      "Due to overall cuts in its aid programme.",
+      "Stable, with a decrease in its bilateral grants that was offset by an increase in its bilateral loans.",
+      "Due to lower levels of multilateral spending following an exceptional loan to the IMF in the previous year, and a reduction in in-donor refugee costs and aid for Ukraine.",
+      "Due to higher levels of contributions to international organisations.",
+      "Due to reductions in its overall ODA.",
+      "Due to lower levels of expenditures reported for in-donor refugees.",
+      "Due to an increase in its bilateral and multilateral aid.",
+      "Reduction in ODA for in-donor refugees and no vaccine donations reported in 2024 (important in 2023).",
+      "Mostly due to lower levels of in-donor refugee costs.",
+      "Due to a slight reduction in its bilateral grants.",
+      "Due in part to not adjusting the ODA budget to rising GNI projections in the second half of 2024.",
+      "Due to lower levels of ODA-eligible in-donor refugee costs.",
+      "Reduction in bilateral ODA offset by increased contributions to multilateral organisations.",
+      "Due to increases in its contributions to EU Institutions.",
+      "Due to a reduction in its bilateral aid.",
+      "Due in part to an increase in in-donor refugee costs and an increase in multilateral ODA.",
+      "Mostly due to lower contributions to international organisations and a fall in reported in-donor refugee costs.",
+      "Slight increase due to timing of commitments to multilateral funds.",
+      "Reduction mainly due to exceptional payments to IDA in 2023 and a decrease in humanitarian assistance.",
+      "Due to lower contributions to multilateral agencies and a decrease in in-donor refugee costs.",
+      "Primarily due to lower multilateral and bilateral aid, in particular concessional loans.",
+      "Due to an increase in its bilateral grants and loans.",
+      "Slight increase from continued upswing in disbursements at the end of a 3-year budget cycle.",
+      "Decrease in costs for in-donor refugees and humanitarian aid.",
+      "Less costs for hosting refugees and a decrease in resources allocated to international cooperation.",
+      "Following an increase in in-donor refugee costs in 2023 and reflecting the commitment to spend 0.5% of GNI on ODA in 2024.",
+      "Multilateral aid increased, but offset by a decrease in bilateral grants, particularly for humanitarian aid and aid for Ukraine.",
+      "Decrease in bilateral ODA (exceptionally high in 2023 due to humanitarian aid to Turkey after an earthquake); multilateral ODA increased.",
+      "Mostly due to a decrease in in-donor refugee costs.",
+      "Due to an increase in both bilateral and multilateral ODA.",
+      "Mostly due to a decrease in in-donor refugee costs as well as other bilateral ODA.",
+      "Due to the issuance of new bilateral loans, which were paused in 2023.",
+      "Increases in both bilateral (notably in-donor refugee costs) and multilateral ODA.",
+      "Decrease in in-donor refugee costs despite an increase in multilateral ODA.",
+      "Due to increases in multilateral contributions.",
+      "Decrease in bilateral ODA despite an increase in multilateral ODA.",
+      "Large increase in multilateral contributions offsetting a decrease in bilateral ODA, largely from reduced in-donor refugee costs.",
+      "Due to a decrease in its bilateral ODA.",
+      "Decrease in bilateral ODA despite an increase in multilateral ODA."
+      )
+    ) %>% 
+  mutate(
+    prct_change_24 = prct_change_24/100
+  )
+
+list_data %>% 
+  filter(source == "OECD") %>% 
+  pluck(2,1) %>% 
+  select(-oda_running_avg) %>% 
+  filter(donor_name %in% pull(scenarios, var = donor_name)) %>% 
+  filter(year <= 2022) %>% 
+  bind_rows(
+    list_data %>% 
+      filter(source == "OECD4") %>% 
+      pluck(2,1) %>% 
+      select(donor_name = Donor, year = TIME_PERIOD, oda_spent = OBS_VALUE) %>% 
+      mutate(oda_spent = oda_spent*conv_factor) %>% 
+      filter(donor_name %in% pull(scenarios, var = donor_name))
+    ) %>% 
+  arrange(donor_name, year) %>% 
+  filter(year <= 2023) %>% 
+  pivot_wider(names_from = "year", values_from = "oda_spent") %>% 
+  left_join(
+    oecd_ODA_prctchg_2024,
+    by = "donor_name") %>% 
+  mutate(
+    `2024` = `2023`*(1+prct_change_24)
+    ) %>% 
+  mutate(
+     prct_change_25 = c(
+      0.027, 
+      0.0,
+      -0.18,
+      -0.20,
+      -0.09,
+      0.0,
+      -0.25,
+      -0.17,
+      -0.16,
+      0.0,
+      -0.1,
+      0.066,
+      0.0,
+      0.0,
+      0.0,
+      -0.018,
+      -0.11,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.03,
+      -0.18,
+      -0.03,
+      -0.60
+    ),
+    comment_25 = c(
+      "Australia will increase its ODA by 2.7% in 2025-2026 according to the OECD",
+      "Austria will decrease ODA overall from 2025-2027, though 2025 should see an increase; assuming no change from 2024",
+      "Belgium is set to decrease ODA by 18% in 2025 according to projections from Donor Tracker",
+      "Canada is set to decrease ODA by 20% in 2025 according to projections from Donor Tracker",
+      "Assuming average decline of ODA by 9% as per OECD projections",
+      "Denamrk has not announced cuts to ODA in 2025; assuming no change from 2024",
+      "Finland has announced a 25% reduction in ODA from 2024 to 2027 according to the OECD",
+      "France is set to decrease ODA by 17% according to the OECD / Donor Tracker",
+      "Germany is set to decrease ODA by 16% according to the OECD / Donor Tracker",
+      "Iceland has not announced cuts to ODA in 2025; assuming no change from 2024",
+      "Ireland is set to decrease ODA by 10% in 2025 according to the OECD / Donor Tracker",
+      "Italy is set to increase ODA by 6.6% in 2025; assuming no change from 2024",
+      "Japan has not announced cuts in ODA in 2025; assuming no change from 2024",
+      "Luxembourg has not announced cuts in ODA in 2025; assuming no change from 2024",
+      "Malta has not announced cuts in ODA in 2025; assuming no change from 2024",
+      "Netherlands has announced cuts of 1.8% in ODA in 2025 according to the OECD / Donor Tracker",
+      "New Zealand has announced cuts of 11% in ODA in 2025 according to the government",
+      "Norway has not announced cuts in ODA in 2025; assuming no change from 2024",
+      "Poland has not announced cuts in ODA in 2025; assuming no change from 2024",
+      "Portugal has not announced cuts in ODA in 2025; assuming no change from 2024",
+      "Spain has not announced cuts in ODA in 2025; assuming no change from 2024",
+      "Sweden has not announced ODA cuts in 2025, actually it could rise by 3% according to the OECD / Donor Tracker; cuts expected only from 2026",
+      "Switzerland is set to cut ODA budget by 18% in 2025 according to the OECD / Donor Tracker",
+      "The United Kingdom is set to cut ODA budget by 3% in 2025 according to the OECD / Donor Tracker",
+      "The United States is set to cut ODA budget by 60% in 2025 according to the OECD / Donor Tracker"
+    ),
+    `2025` = `2024`*(1+prct_change_25)
+  )
+
+ 
