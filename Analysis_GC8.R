@@ -2191,19 +2191,97 @@ conv_factor <- p_2022 / p_2023
 oecd_ODA_prctchg_2024 <-
   tibble(
     donor_name = c(
-      "Austria", "Belgium", "Czechia", "Denmark", "Estonia", "Finland", "France", "Germany",
-      "Greece", "Hungary", "Ireland", "Italy", "Latvia", "Lithuania", "Luxembourg", "Netherlands",
-      "Poland", "Portugal", "Slovak Republic", "Slovenia", "Spain", "Sweden", "Australia", "Canada",
-      "Iceland", "Japan", "Korea", "New Zealand", "Norway", "Switzerland", "United Kingdom",
-      "United States", "Azerbaijan", "Bulgaria", "Croatia", "Israel", "Kuwait", "Liechtenstein",
-      "Malta", "Monaco", "Qatar", "Romania", "Turkey", "United Arab Emirates"
+      "Austria", 
+      "Belgium", 
+      "Czechia", 
+      "Denmark", 
+      "Estonia", 
+      "Finland", 
+      "France", 
+      "Germany",
+      "Greece", 
+      "Hungary",
+      "Ireland", 
+      "Italy", 
+      "Latvia", 
+      "Lithuania", 
+      "Luxembourg",
+      "Netherlands",
+      "Poland", 
+      "Portugal", 
+      "Slovak Republic", 
+      "Slovenia", "Spain", 
+      "Sweden", 
+      "Australia", 
+      "Canada",
+      "Iceland", 
+      "Japan", 
+      "Korea", 
+      "New Zealand", 
+      "Norway", 
+      "Switzerland",
+      "United Kingdom",
+      "United States", 
+      "Azerbaijan", 
+      "Bulgaria", 
+      "Croatia", 
+      "Israel", 
+      "Kuwait",
+      "Liechtenstein",
+      "Malta", 
+      "Monaco", 
+      "Qatar", 
+      "Romania", 
+      "Turkey", 
+      "United Arab Emirates",
+      "Cyprus"
       ),
     prct_change_24 = c(
-      -9.5, 12.2, -29.1, 2.2, -26.3, -12.9, -0.02, -17.2, 3.3, -31.5,
-      -14.0, 6.7, -22.1, -12.9, -0.3, -2.8, -26.8, 21.3, 3.9, -1.8,
-      9.0, -13.4, 0.3, -8.1, -3.6, -10.3, 24.8, 0.5, -3.8, -14.9,
-      -10.8, -4.4, -40.9, -21.3, 3.6, -33.4, 1130.9, 16.2, -9.2, 8.7,
-      -7.6, 14.2, -5.4, -20.6
+      -9.5, 
+      12.2, 
+      -29.1, 
+      2.2, 
+      -26.3, 
+      -12.9, 
+      -0.02, 
+      -17.2, 
+      3.3, 
+      -31.5,
+      -14.0, 
+      6.7, 
+      -22.1,
+      -12.9, 
+      -0.3, 
+      -2.8, 
+      -26.8,
+      21.3,
+      3.9, 
+      -1.8,
+      9.0,
+      -13.4, 
+      0.3, 
+      -8.1, 
+      -3.6, 
+      -10.3, 
+      24.8, 
+      0.5, 
+      -3.8, 
+      -14.9,
+      -10.8,
+      -4.4, 
+      -40.9,
+      -21.3, 
+      3.6, 
+      -33.4, 
+      1130.9, 
+      16.2,
+      -9.2, 
+      8.7,
+      -7.6, 
+      14.2, 
+      -5.4, 
+      -20.6,
+      -9.0
       ),
     comment_24 = c(
       "Due to decreases in both its bilateral aid, driven by lower in-donor refugee costs, as well as a fall in its multilateral aid.",
@@ -2249,38 +2327,44 @@ oecd_ODA_prctchg_2024 <-
       "Decrease in bilateral ODA despite an increase in multilateral ODA.",
       "Large increase in multilateral contributions offsetting a decrease in bilateral ODA, largely from reduced in-donor refugee costs.",
       "Due to a decrease in its bilateral ODA.",
-      "Decrease in bilateral ODA despite an increase in multilateral ODA."
+      "Decrease in bilateral ODA despite an increase in multilateral ODA.",
+      "Assuming 9% drop in ODA as per average drop in overall ODA reported by the OECD"
       )
     ) %>% 
   mutate(
     prct_change_24 = prct_change_24/100
   )
 
-list_data %>% 
-  filter(source == "OECD") %>% 
-  pluck(2,1) %>% 
-  select(-oda_running_avg) %>% 
-  filter(donor_name %in% pull(scenarios, var = donor_name)) %>% 
-  filter(year <= 2022) %>% 
-  bind_rows(
-    list_data %>% 
-      filter(source == "OECD4") %>% 
-      pluck(2,1) %>% 
-      select(donor_name = Donor, year = TIME_PERIOD, oda_spent = OBS_VALUE) %>% 
-      mutate(oda_spent = oda_spent*conv_factor) %>% 
-      filter(donor_name %in% pull(scenarios, var = donor_name))
-    ) %>% 
-  arrange(donor_name, year) %>% 
-  filter(year <= 2023) %>% 
-  pivot_wider(names_from = "year", values_from = "oda_spent") %>% 
-  left_join(
-    oecd_ODA_prctchg_2024,
-    by = "donor_name") %>% 
-  mutate(
-    `2024` = `2023`*(1+prct_change_24)
-    ) %>% 
-  mutate(
-     prct_change_25 = c(
+oecd_ODA_prctchg_2025 <-
+  tibble(
+    donor_name = c(
+      "Australia",
+      "Austria",
+      "Belgium",
+      "Canada",
+      "Cyprus",
+      "Denmark",
+      "Finland",
+      "France",
+      "Germany",
+      "Iceland",
+      "Ireland",
+      "Italy",
+      "Japan",
+      "Luxembourg",
+      "Malta",
+      "Netherlands",
+      "New Zealand",
+      "Norway",
+      "Poland",
+      "Portugal",
+      "Spain",
+      "Sweden",
+      "Switzerland",
+      "United Kingdom",
+      "United States"
+    ),
+    prct_change_25 = c(
       0.027, 
       0.0,
       -0.18,
@@ -2333,8 +2417,52 @@ list_data %>%
       "Switzerland is set to cut ODA budget by 18% in 2025 according to the OECD / Donor Tracker",
       "The United Kingdom is set to cut ODA budget by 3% in 2025 according to the OECD / Donor Tracker",
       "The United States is set to cut ODA budget by 60% in 2025 according to the OECD / Donor Tracker"
-    ),
+      )
+    )
+  
+list_data %>% 
+  filter(source == "OECD") %>% 
+  pluck(2,1) %>% 
+  select(-oda_running_avg) %>% 
+  filter(donor_name %in% pull(scenarios, var = donor_name)) %>% 
+  filter(year <= 2022) %>% 
+  bind_rows(
+    list_data %>% 
+      filter(source == "OECD4") %>% 
+      pluck(2,1) %>% 
+      select(donor_name = Donor, year = TIME_PERIOD, oda_spent = OBS_VALUE) %>% 
+      mutate(oda_spent = oda_spent*conv_factor) %>% 
+      filter(donor_name %in% pull(scenarios, var = donor_name))
+    ) %>% 
+  arrange(donor_name, year) %>% 
+  filter(year <= 2023) %>% 
+  pivot_wider(
+    names_from = "year", 
+    values_from = "oda_spent"
+    ) %>% 
+  left_join(
+    oecd_ODA_prctchg_2024 %>% 
+      select(-comment_24),
+    by = "donor_name"
+    ) %>%
+  left_join(
+    oecd_ODA_prctchg_2025 %>% 
+      select(-comment_25),
+    by = "donor_name"
+    ) %>%
+  mutate(
+    `2024` = `2023`*(1+prct_change_24),
     `2025` = `2024`*(1+prct_change_25)
+  ) %>%
+  select(
+    -starts_with("prct")
+    ) %>% 
+  pivot_longer(
+    cols = c(as.character(1997:2025)),
+    names_to = "year",
+    values_to = "oda_spent"
   )
+
+
 
  
