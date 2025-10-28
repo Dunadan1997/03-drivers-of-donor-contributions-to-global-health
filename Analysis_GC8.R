@@ -2125,8 +2125,9 @@ scenarios <-
     govts_2025 %>% 
       mutate(party_name_short = str_to_lower(gov_abbrev)) %>% 
       select(donor_name, party_name_short, contains("_id_")), 
-    by = c("party_name_short", "donor_name")) %>% 
-  left_join(
+    by = c("party_name_short", "donor_name")
+    ) %>% 
+  left_join( # Spain party_id_mp 33320 should be 3.55 for lrgen_mp 
     bind_rows(
       list_data %>%
         filter(source == "MP") %>% 
@@ -2143,8 +2144,7 @@ scenarios <-
           .groups = "drop"),
       list_data %>% 
         filter(source == "MP") %>% 
-        pluck(2,1)
-      ) %>% 
+        pluck(2,1) %>% 
       group_by(country_name) %>% 
       filter(elecdate == max(elecdate)) %>% 
       ungroup() %>% 
@@ -2183,6 +2183,7 @@ scenarios <-
     scenarios, 
     by = "donor_name") %>% 
   select(donor_name, year_c, everything(), -party_name_short, -contains("_id_"))
+  )
 
 p_2022 <- 100   
 p_2023 <- 103.60121   
@@ -2419,8 +2420,79 @@ oecd_ODA_prctchg_2025 <-
       "The United States is set to cut ODA budget by 60% in 2025 according to the OECD / Donor Tracker"
       )
     )
-  
-list_data %>% 
+
+oecd_ODA_prctchg_2026 <-
+  tibble(
+    donor_name = c(
+      "Australia", 
+      "Belgium", 
+      "Canada", 
+      "Denmark", 
+      "France", 
+      "Germany",
+      "Ireland", 
+      "Italy", 
+      "Japan", 
+      "Netherlands", 
+      "Norway",
+      "Spain", 
+      "Sweden", 
+      "Switzerland", 
+      "United Kingdom",
+      "United States",
+      "Austria",
+      "Cyprus",
+      "Finland",
+      "Iceland",
+      "Luxembourg",
+      "Malta",
+      "New Zealand",
+      "Poland",
+      "Portugal"
+    ),
+    prct_change_26 = c(
+      0.13,  
+      -5.82, 
+      1.55,  
+      1.78, 
+      -7.45, 
+      -6.65,
+      0.00, 
+      -3.62, 
+      0.43, 
+      -6.19, 
+      0.69,
+      10.26,
+      -7.22, 
+      -4.06, 
+      -27.97,
+      -26.04,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ),
+    comment_26 = c(
+      rep("Projected ODA change in 2026, Donor Tracker",16),
+      "Austria, assuming same as 2024",
+      "Cyprus, assuming stabilisation in 2026",
+      "Finland, assuming stabilisation in 2026",
+      "Iceland, assuming stabilisation in 2026",
+      "Luxemburg, assuming stabilisation in 2026",
+      "Malta, assuming stabilisation in 2026",
+      "New Zealand, assuming stabilisation in 2026",
+      "Poland, assuming stabilisation in 2026",
+      "Portugal, assuming stabilisation in 2026"
+    )
+  )
+
+scenario_ODA <-
+  list_data %>% 
   filter(source == "OECD") %>% 
   pluck(2,1) %>% 
   select(-oda_running_avg) %>% 
@@ -2433,35 +2505,101 @@ list_data %>%
       select(donor_name = Donor, year = TIME_PERIOD, oda_spent = OBS_VALUE) %>% 
       mutate(oda_spent = oda_spent*conv_factor) %>% 
       filter(donor_name %in% pull(scenarios, var = donor_name))
-    ) %>% 
+  ) %>% 
   arrange(donor_name, year) %>% 
   filter(year <= 2023) %>% 
   pivot_wider(
     names_from = "year", 
     values_from = "oda_spent"
-    ) %>% 
+  ) %>% 
   left_join(
     oecd_ODA_prctchg_2024 %>% 
       select(-comment_24),
     by = "donor_name"
-    ) %>%
+  ) %>%
   left_join(
     oecd_ODA_prctchg_2025 %>% 
       select(-comment_25),
     by = "donor_name"
-    ) %>%
+  ) %>%
+  left_join(
+    oecd_ODA_prctchg_2026 %>% 
+      select(-comment_26),
+    by = "donor_name"
+  ) %>% 
   mutate(
     `2024` = `2023`*(1+prct_change_24),
     `2025` = `2024`*(1+prct_change_25)
   ) %>%
   select(
     -starts_with("prct")
-    ) %>% 
+  ) %>% 
   pivot_longer(
     cols = c(as.character(1997:2025)),
     names_to = "year",
     values_to = "oda_spent"
+  ) %>% 
+  mutate(
+    oda_running_avg = slide_mean(
+      oda_spent, before = 1, after = 1, complete = FALSE, na_rm = TRUE
+    )
+  ) %>% 
+  select(-oda_running_avg)
+
+scenario_other_orgs <-
+  list_data %>% 
+  filter(source == "FULL_FACTORS") %>% 
+  pluck(2,1) %>% 
+  filter(donor_type == "public") %>% 
+  group_by(year, donor_name) %>% 
+  mutate(
+    other_orgs_cp = sum(GAVI_cp, ADF_cp, IFAD_cp, IDA_cp, GCF_cp, GEF_cp, GPE_cp, AfDf_cp, CEPI_cp, na.rm = TRUE) / 9) %>% 
+  select(donor_name, year, other_orgs_cp) %>%
+  ungroup() %>% 
+  filter(year == 2022) %>% 
+  pivot_wider(
+    names_from = "year", 
+    values_from = "other_orgs_cp"
+    ) %>% 
+  left_join(
+    scenario_ODA %>%  
+      pivot_wider(
+        names_from = "year", 
+        values_from = "oda_spent"
+        ) %>%
+      mutate(prct_change = (`2025`-`2022`)/`2022`) %>%
+      select(donor_name, prct_change),
+    by = "donor_name") %>% 
+  mutate(`2025` = `2022`*(1+prct_change)) %>% 
+  select(-prct_change, -`2022`) %>% 
+  pivot_longer(
+    cols = `2025`,
+    values_to = "other_orgs_cp",
+    names_to = "year"
   )
+  
+scenarios_full <-
+  left_join(
+    scenarios,
+    scenario_ODA %>% 
+      filter(year == 2025) %>% 
+      select(donor_name, oda_spent),
+    by = "donor_name"
+    ) %>% 
+  left_join(
+    scenario_other_orgs %>% 
+      select(-year),
+    by = "donor_name"
+  ) %>% 
+  mutate(
+    oda_spent_log = log(oda_spent),
+    other_orgs_cp_log = log(other_orgs_cp)
+  )
+
+
+  
+  
+  
 
 
 
