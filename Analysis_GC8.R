@@ -1709,7 +1709,8 @@ boot_ve03 <-
 
 # Zero Conditional Mean
 test$year_c <- 
-  scale(test$year_std, center = TRUE, scale = FALSE)
+  as.vector(scale(test$year_std, center = TRUE, scale = FALSE))
+
 lm.formula.ve03 <-
   as.formula(
     paste0(
@@ -2127,8 +2128,8 @@ scenarios <-
       select(donor_name, party_name_short, contains("_id_")), 
     by = c("party_name_short", "donor_name")
     ) %>% 
-  left_join( # Spain party_id_mp 33320 should be 3.55 for lrgen_mp 
-    bind_rows(
+  left_join(
+    bind_rows(# Spain party_id_mp 33320 should be 3.55 for lrgen_mp 
       list_data %>%
         filter(source == "MP") %>% 
         pluck(2,1) %>% 
@@ -2140,15 +2141,16 @@ scenarios <-
         summarise(
           party_id_mp = as.numeric(str_c(party_id_mp, collapse = "")), 
           party_short_name = str_c(party_short_name, collapse = ";"), 
-          lrgen_mp = mean(lrgen_mp),
+          lrgen_mp = mean(lrgen_mp),          
           .groups = "drop"),
-      list_data %>% 
-        filter(source == "MP") %>% 
-        pluck(2,1) %>% 
+        list_data %>% 
+          filter(source == "MP") %>% 
+          pluck(2,1) 
+      ) %>% 
       group_by(country_name) %>% 
       filter(elecdate == max(elecdate)) %>% 
       ungroup() %>% 
-      select(party_id_mp, lrgen_mp), 
+      select(party_id_mp, lrgen_mp),
     by = "party_id_mp"
     ) %>% 
   left_join(
@@ -2183,7 +2185,6 @@ scenarios <-
     scenarios, 
     by = "donor_name") %>% 
   select(donor_name, year_c, everything(), -party_name_short, -contains("_id_"))
-  )
 
 p_2022 <- 100   
 p_2023 <- 103.60121   
@@ -2553,7 +2554,7 @@ scenario_other_orgs <-
   filter(donor_type == "public") %>% 
   group_by(year, donor_name) %>% 
   mutate(
-    other_orgs_cp = sum(GAVI_cp, ADF_cp, IFAD_cp, IDA_cp, GCF_cp, GEF_cp, GPE_cp, AfDf_cp, CEPI_cp, na.rm = TRUE) / 9) %>% 
+    other_orgs_cp = mean(c(GAVI_cp, ADF_cp, IFAD_cp, IDA_cp, GCF_cp, GEF_cp, GPE_cp, AfDf_cp, CEPI_cp), na.rm = TRUE)) %>% 
   select(donor_name, year, other_orgs_cp) %>%
   ungroup() %>% 
   filter(year == 2022) %>% 
@@ -2593,9 +2594,17 @@ scenarios_full <-
   ) %>% 
   mutate(
     oda_spent_log = log(oda_spent),
-    other_orgs_cp_log = log(other_orgs_cp)
-  )
+    other_orgs_cp_log = log(other_orgs_cp),
+    across(where(is.numeric), ~ replace(., !is.finite(.), 0))
+    ) %>% 
+  group_by(donor_name) %>% 
+  mutate(
+    lr_all = mean(c(lrecon_ches, lrgen_mp, lrgen_ches), na.rm = TRUE)
+    ) %>% 
+  ungroup()
 
+
+predict(lm.mod.ve03, newdata = scenarios_full)
 
   
   
