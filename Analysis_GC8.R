@@ -2187,7 +2187,8 @@ scenarios <-
   select(donor_name, year_c, everything(), -party_name_short, -contains("_id_"))
 
 p_2022 <- 100   
-p_2023 <- 103.60121   
+p_2023 <- 103.6  
+p_2025 <- 109.9
 conv_factor <- p_2022 / p_2023
 
 oecd_ODA_prctchg_2024 <-
@@ -2603,12 +2604,30 @@ scenarios_full <-
     ) %>% 
   ungroup()
 
+predict(lm.mod.ve03, newdata = scenarios_full) * (p_2025/p_2022)
 
-predict(lm.mod.ve03, newdata = scenarios_full)
+# use prediction interval / boost: ask if actual pledges lie inside the interval.
+  
+boot.fn <- function(data) {
+  predict(
+    lm.mod.ve03, 
+    newdata = data) 
+}  
 
+set.seed(159)
+boot(scenarios_full, predict(lm.mod.ve03), 1000)
+
+vec04 <- vector("double", length = 1000)
+
+for (i in 1:1000) {
   
+  rsample <- sample(nrow(scenarios_full), size = nrow(scenarios_full), replace = T)
   
+  pred <- predict(lm.mod.ve03, newdata = scenarios_full[rsample, ])
   
+  vec04[i] <- pred
+  
+}
 
 
 
